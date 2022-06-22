@@ -17,6 +17,8 @@ public class Strings {
     private static final Logger log = LoggerFactory.getLogger(Strings.class);
 
     private static final ResourceBundle STR_CORE = ResourceBundle.getBundle("strings_core", new UTF8Control());
+    public static Strings CORE = new Strings("strings_core");
+
     private final ResourceBundle strLocal;
 
     public Strings() {
@@ -24,15 +26,16 @@ public class Strings {
     }
 
     public Strings(String bundleName) {
-        if (bundleName == null) {
-            this.strLocal = STR_CORE;
-            log.warn("No local strings file defined, falling back to CORE's");
+        if (bundleName == null || STR_CORE.getBaseBundleName().equals(bundleName)) {
+            strLocal = null;
+            if (bundleName == null)
+                log.warn("No local strings file defined, falling back to CORE's");
         } else this.strLocal = ResourceBundle.getBundle(bundleName, new UTF8Control());
     }
 
     public String get(String id, Object... args) {
         final String str;
-        if (strLocal.containsKey(id))
+        if (strLocal != null && strLocal.containsKey(id))
             str = strLocal.getString(id);
         else if (STR_CORE.containsKey(id))
             str = STR_CORE.getString(id);
@@ -47,7 +50,7 @@ public class Strings {
     }
 
     public boolean has(String id) {
-        return strLocal.containsKey(id) || STR_CORE.containsKey(id);
+        return strLocal != null && strLocal.containsKey(id) || STR_CORE.containsKey(id);
     }
 
     public String getPlural(int count, String id) {

@@ -1,6 +1,7 @@
 package ru.zont.dsbot.core.config;
 
 import java.io.File;
+import java.util.List;
 
 public class ZDSBBotConfig extends ZDSBConfig {
     public ZDSBBotConfig(String name, File dir, ZDSBConfig inherit) {
@@ -21,5 +22,9 @@ public class ZDSBBotConfig extends ZDSBConfig {
 
     public String getBotName() {
         return botName.getValue();
+    }
+
+    public List<String> getOperators() {
+        return List.of(operators.getValue().split("[, ]"));
     }
 }

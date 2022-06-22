@@ -4,18 +4,24 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.util.Reflect;
+import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBBotConfig;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 public abstract class GuildListenerAdapter implements EventListener {
+    protected final Logger log;
+
     private final GuildContext context;
 
     public GuildListenerAdapter(GuildContext context) {
         this.context = context;
+        log = LoggerFactory.getLogger("%s(%s)".formatted(getClass().getName(), getContext().getGuildNameNormalized()));
     }
 
     @Override
@@ -41,5 +47,21 @@ public abstract class GuildListenerAdapter implements EventListener {
 
     public final ZDSBot getBot() {
         return context.getBot();
+    }
+
+    public final <T extends ZDSBBasicConfig> T getConfig() {
+        return getContext().getConfig();
+    }
+
+    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+        return getContext().getGlobalConfig();
+    }
+
+    public final <T extends ZDSBBotConfig> T getBotConfig() {
+        return getBot().getConfig();
+    }
+
+    public final String getPrefix() {
+        return getConfig().getPrefix();
     }
 }

@@ -1,12 +1,17 @@
 package ru.zont.dsbot.core;
 
+import com.ibm.icu.text.Transliterator;
 import net.dv8tion.jda.api.entities.Guild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.zont.dsbot.core.commands.ErrorReporter;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.listeners.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.Reflect;
+
+import java.util.HashMap;
+import java.util.LinkedList;
 
 public class GuildContext {
     private static final Logger log = LoggerFactory.getLogger(GuildContext.class);
@@ -14,6 +19,10 @@ public class GuildContext {
     private final ZDSBot bot;
     private final String guildId;
     private final String guildName;
+
+    private final HashMap<String, CommandAdapter> commands = new HashMap<>();
+    private final LinkedList<GuildListenerAdapter> listeners = new LinkedList<>();
+    private final ErrorReporter errorReporter;
 
     public GuildContext(ZDSBot bot, Guild guild) {
         this.bot = bot;
@@ -24,7 +33,7 @@ public class GuildContext {
             final CommandAdapter instance = Reflect.commonsNewInstance(klass,
                     "Cannot instantiate GuildContext",
                     this);
-            getBot().getJda().addEventListener(instance);
+            commands.put(instance.getName(), instance);
         }
 
         for (Class<? extends GuildListenerAdapter> klass: bot.getGuildListeners()) {
@@ -32,7 +41,19 @@ public class GuildContext {
                     "Cannot instantiate GuildContext",
                     this);
             getBot().getJda().addEventListener(instance);
+            listeners.add(instance);
         }
+
+        errorReporter = new ErrorReporter(this);
+    }
+
+    public String getGuildNameNormalized() {
+        final Transliterator t = Transliterator.getInstance("Any-Latin; NFD");
+        return t.transliterate(getGuildName());
+    }
+
+    public ErrorReporter getErrorReporter() {
+        return errorReporter;
     }
 
     /**
@@ -65,5 +86,18 @@ public class GuildContext {
 
     public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
         return bot.getGlobalConfig();
+    }
+
+    public HashMap<String, CommandAdapter> getCommands() {
+        return commands;
+    }
+
+    public LinkedList<GuildListenerAdapter> getListeners() {
+        return listeners;
+    }
+
+    public String formatLog(String s, Object... args) {
+        return "[%s] ".formatted(getGuildNameNormalized())
+                + String.format(s, args);
     }
 }

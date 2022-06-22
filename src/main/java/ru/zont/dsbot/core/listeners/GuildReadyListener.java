@@ -5,10 +5,10 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.ZDSBot;
 
-public class GuildContextListener extends ListenerAdapter {
+public class GuildReadyListener extends ListenerAdapter {
     private final ZDSBot bot;
 
-    public GuildContextListener(ZDSBot bot) {
+    public GuildReadyListener(ZDSBot bot) {
         this.bot = bot;
     }
 

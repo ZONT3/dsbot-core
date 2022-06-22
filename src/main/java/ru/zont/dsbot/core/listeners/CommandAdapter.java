@@ -1,29 +1,65 @@
 package ru.zont.dsbot.core.listeners;
 
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.events.GenericEvent;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.Input;
+import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBBotConfig;
 
-public abstract class CommandAdapter extends GuildListenerAdapter {
+import java.util.Collections;
+import java.util.List;
+
+public abstract class CommandAdapter {
+    private final GuildContext context;
+
     public CommandAdapter(GuildContext context) {
-        super(context);
+        this.context = context;
     }
 
-    @Override
-    public final void onEvent(@NotNull Guild guild, @NotNull GenericEvent genericEvent) {
-        if (genericEvent instanceof final MessageReceivedEvent event) {
-            final Message message = event.getMessage();
-            final String content = shouldCheckByRawContent() ? message.getContentDisplay() : message.getContentRaw();
+    public final GuildContext getContext() {
+        return context;
+    }
 
+    public final ZDSBot getBot() {
+        return context.getBot();
+    }
 
-        }
+    public final <T extends ZDSBBasicConfig> T getConfig() {
+        return getContext().getConfig();
+    }
+
+    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+        return getContext().getGlobalConfig();
+    }
+
+    public final <T extends ZDSBBotConfig> T getBotConfig() {
+        return getBot().getConfig();
+    }
+
+    public final String getPrefix() {
+        return getConfig().getPrefix();
     }
 
     public abstract void onCall(Input input);
+
+    public abstract String getName();
+
+    public List<String> getAliases() {
+        return Collections.emptyList();
+    }
+
+    public boolean isStringRepresentsThisCall(String inputString) {
+        if (inputString.startsWith(getName())) return true;
+
+        for (String alias: getAliases())
+            if (inputString.startsWith(alias)) return true;
+
+        return false;
+    }
+
+    public boolean dontCallByName() {
+        return false;
+    }
 
     public boolean shouldCheckByRawContent() {
         return false;

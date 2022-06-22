@@ -1,6 +1,5 @@
 package ru.zont.dsbot.core;
 
-import com.ibm.icu.text.Transliterator;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -10,7 +9,7 @@ import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
 import ru.zont.dsbot.core.listeners.CommandAdapter;
-import ru.zont.dsbot.core.listeners.GuildContextListener;
+import ru.zont.dsbot.core.listeners.GuildReadyListener;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 
 import javax.security.auth.login.LoginException;
@@ -65,13 +64,12 @@ public class ZDSBot {
                 final String id = configName.replaceFirst("guild-", "");
                 final GuildContext context = contextStore.getOrDefault(id, null);
                 if (context != null) {
-                    final Transliterator t = Transliterator.getInstance("Any-Latin; NFD");
-                    return botNameLong + " - Guild '%s' config".formatted(t.transliterate(context.getGuildName()));
+                    return botNameLong + " - Guild '%s' config".formatted(context.getGuildNameNormalized());
                 } else return botNameLong + " - %s config".formatted(configName);
             }
         });
 
-        jdaBuilder.addEventListeners(new GuildContextListener(this));
+        jdaBuilder.addEventListeners(new GuildReadyListener(this));
         jda = jdaBuilder.build();
         jda.awaitReady();
     }
