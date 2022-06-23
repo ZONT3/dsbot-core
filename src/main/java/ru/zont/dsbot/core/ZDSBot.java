@@ -123,6 +123,10 @@ public class ZDSBot {
         return (T) configManager.guildConfig(guildId);
     }
 
+    public final GuildContext getGuildContext(String guildId) {
+        return contextStore.getOrDefault(guildId, null);
+    }
+
     public final LinkedList<GuildContext> getGuildContexts() {
         return new LinkedList<>(contextStore.values());
     }

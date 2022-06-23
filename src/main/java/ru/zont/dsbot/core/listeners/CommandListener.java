@@ -23,24 +23,23 @@ public class CommandListener extends GuildListenerAdapter {
     @Override
     public void onEvent(@NotNull Guild guild, @NotNull GenericEvent genericEvent) {
         if (genericEvent instanceof final MessageReceivedEvent event) {
-            try {
-                handleEvent(event);
-            } catch (CommandNotFoundException | NotImplementedException ignored) {
-            } catch (DescribedException e) {
-                log.info("DescribedException from user %s, command string: %s".formatted(
-                        event.getAuthor().getAsTag(),
-                        event.getMessage().getContentRaw()
-                ));
-                log.info("%s: %s".formatted(e.getTitle(), e.getDescription()), e);
-                getContext().getErrorReporter().reportError(event.getChannel(), event.getMessage(), e)
-            } catch (Throwable e) {
-                getContext().getErrorReporter().reportError(
-                        event.getChannel(),
-                        event.getMessage(),
-                        e,
-                        Strings.CORE.get("err.unexpected"),
-                        e.getMessage());
-            }
+//            try {
+//                handleEvent(event);
+//            } catch (CommandNotFoundException | NotImplementedException ignored) {
+//            } catch (DescribedException e) {
+//                log.info("DescribedException from user %s, command string: %s".formatted(
+//                        event.getAuthor().getAsTag(),
+//                        event.getMessage().getContentRaw()
+//                ));
+//                log.info("%s: %s".formatted(e.getTitle(), e.getDescription()), e);
+//                getContext().getErrorReporter().reportError(event.getChannel(), event.getMessage(), e)
+//            } catch (Throwable e) {
+//                getContext().getErrorReporter().reportError(
+//                        getContext().getResponseTarget(event),
+//                        e,
+//                        Strings.CORE.get("err.unexpected"),
+//                        e.getMessage());
+//            }
         }
     }
 
@@ -64,7 +63,7 @@ public class CommandListener extends GuildListenerAdapter {
             } else if (found.size() == 1) {
                 adapter = found.get(0);
             } else {
-                throw
+
             }
         }
     }

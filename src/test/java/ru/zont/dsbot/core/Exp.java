@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core;
 
+import net.dv8tion.jda.api.entities.TextChannel;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfig;
@@ -7,7 +8,6 @@ import ru.zont.dsbot.core.util.ZDSBotBuilder;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
-import java.util.LinkedList;
 
 public class Exp {
 
@@ -26,25 +26,18 @@ public class Exp {
     }
 
     public static void main(String[] args) throws LoginException, InterruptedException {
-        ZDSBot bot = ZDSBotBuilder.createLight(args[0])
+        ZDSBot bot = mainBot(args[0]);
+        bot.getJda().awaitReady();
+        GuildContext context = bot.getGuildContext("331526118635208716");
+        TextChannel channel = context.getGuild().getTextChannelById("450293189711101952");
+
+    }
+
+    private static ZDSBot mainBot(String token) throws LoginException, InterruptedException {
+        return ZDSBotBuilder.createLight(token)
                 .config(Config.class, BotConfig.class)
                 .addDefaultIntents()
                 .setCacheAll()
                 .build();
-
-        while (true) {
-            final LinkedList<GuildContext> guildContexts = bot.getGuildContexts();
-            if (!bot.getGlobalConfig().wasUpdated("zxc"))
-                if (guildContexts.stream().noneMatch(c -> c.getConfig().wasUpdated("zxc")))
-                    continue;
-
-            System.out.println("");
-            System.out.printf("Global prefix: %s\n", bot.getGlobalConfig().getPrefix());
-            for (GuildContext context: guildContexts) {
-                System.out.printf("Guild '%s' prefix: %s\n", context.getGuildName(), context.getConfig().getPrefix());
-            }
-
-            guildContexts.forEach(c -> c.getConfig().wasUpdated("zxc"));
-        }
     }
 }

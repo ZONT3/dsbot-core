@@ -2,9 +2,9 @@ package ru.zont.dsbot.core;
 
 import com.ibm.icu.text.Transliterator;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.zont.dsbot.core.commands.ErrorReporter;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.listeners.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
@@ -99,5 +99,13 @@ public class GuildContext {
     public String formatLog(String s, Object... args) {
         return "[%s] ".formatted(getGuildNameNormalized())
                 + String.format(s, args);
+    }
+
+    public ResponseTarget getResponseTarget(MessageReceivedEvent event) {
+        if (!getConfig().replyToMessages.isFalse()) {
+            return new ResponseTarget(event.getMessage());
+        } else {
+            return new ResponseTarget(event.getChannel());
+        }
     }
 }
