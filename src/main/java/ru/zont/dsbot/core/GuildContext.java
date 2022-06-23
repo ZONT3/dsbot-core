@@ -9,6 +9,7 @@ import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.listeners.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.Reflect;
+import ru.zont.dsbot.core.util.ResponseTarget;
 
 import java.util.HashMap;
 import java.util.LinkedList;

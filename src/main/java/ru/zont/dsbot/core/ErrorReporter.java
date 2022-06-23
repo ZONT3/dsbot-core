@@ -1,5 +1,7 @@
 package ru.zont.dsbot.core;
 
+import ru.zont.dsbot.core.util.ResponseTarget;
+
 public class ErrorReporter {
     private final GuildContext context;
 
