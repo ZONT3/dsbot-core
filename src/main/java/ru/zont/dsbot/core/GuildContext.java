@@ -1,13 +1,14 @@
 package ru.zont.dsbot.core;
 
 import com.ibm.icu.text.Transliterator;
-import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.listeners.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
+import ru.zont.dsbot.core.util.ErrorReporter;
 import ru.zont.dsbot.core.util.Reflect;
 import ru.zont.dsbot.core.util.ResponseTarget;
 
@@ -108,5 +109,47 @@ public class GuildContext {
         } else {
             return new ResponseTarget(event.getChannel());
         }
+    }
+
+    public MessageChannel findLogChannel() {
+        MessageChannel channel = null;
+
+        try {
+            String value = getConfig().logChannel.getValue();
+            if (!value.isEmpty() && value.matches("\\d+") && Long.parseLong(value) > 0)
+                channel = getGuild().getTextChannelById(value);
+
+            if (channel == null && !getConfig().doSkipSearchingLogChannel()) {
+                log.info("Config channel for guild {} not found, searching for any suitable...", getGuildNameNormalized());
+                channel = getGuild().getSystemChannel();
+                if (channel == null)
+                    channel = getGuild().getDefaultChannel();
+            }
+
+            if (channel == null) {
+                log.warn("Failed to find log channel. Falling to first of op's PM");
+                for (String operator : getBot().getConfig().getOperators()) {
+                    try {
+                        User user = getBot().getJda().retrieveUserById(operator).complete();
+                        PrivateChannel privateChannel = user.openPrivateChannel().complete();
+                        if (privateChannel != null) {
+                            channel = privateChannel;
+                            break;
+                        }
+                        log.warn("Cannot open PM with {}", user.getName());
+                    } catch (Throwable t) {
+                        log.warn("Cannot open PM with %s".formatted(operator), t);
+                    }
+                }
+            }
+
+            if (channel == null)
+                log.error("Cannot find log channel for {}. OPs count: {}",
+                        getGuildNameNormalized(), getBot().getConfig().getOperators());
+        } catch (Throwable t) {
+            log.error("Failed to find log channel for %s".formatted(guildId), t);
+        }
+
+        return channel;
     }
 }

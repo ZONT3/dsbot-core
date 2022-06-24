@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands;
+package ru.zont.dsbot.core.util;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;

@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core.commands;
 
+import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.Strings;
 
 public class CommandNotFoundException extends DescribedException {

@@ -11,6 +11,10 @@ import java.util.function.Consumer;
 
 public class ResponseTarget {
 
+    public static boolean isValid(ResponseTarget tgt) {
+        return tgt != null && tgt.isValid();
+    }
+
     public static final int EMBEDS_PER_MESSAGE = 1;
 
     public static ResponseTarget channel(MessageChannel channel) {
@@ -79,5 +83,9 @@ public class ResponseTarget {
         } else {
             return null;
         }
+    }
+
+    public boolean isValid() {
+        return channel != null || message != null;
     }
 }

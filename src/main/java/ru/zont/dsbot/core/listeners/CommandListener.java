@@ -6,10 +6,6 @@ import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.GuildContext;
-import ru.zont.dsbot.core.commands.CommandNotFoundException;
-import ru.zont.dsbot.core.commands.DescribedException;
-import ru.zont.dsbot.core.commands.NotImplementedException;
-import ru.zont.dsbot.core.util.Strings;
 
 import java.util.HashMap;
 import java.util.List;

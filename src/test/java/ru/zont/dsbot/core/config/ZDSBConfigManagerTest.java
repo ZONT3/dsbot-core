@@ -102,6 +102,12 @@ class ZDSBConfigManagerTest extends StandardTest {
     }
 
     @Test
+    void evaluateLong() {
+        TestConfig config = manager.guildConfig("1234055");
+        assertEquals(4 * 60 * 60, config.getErrorRepeatPeriod(), "Evaluation failed");
+    }
+
+    @Test
     void globalConfig() {
         assertEquals(defaultValue, manager.globalConfig().default_entry_field.getValue());
     }

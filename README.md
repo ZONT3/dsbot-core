@@ -1,7 +1,7 @@
 ## TODO
 
 - [x] Config system
-- [ ] Embed splitter
+- [x] Embed splitter
 - [ ] Error reporter
 - [ ] Commands
 - [ ] Services

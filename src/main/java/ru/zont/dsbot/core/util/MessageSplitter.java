@@ -14,26 +14,29 @@ import java.util.regex.Pattern;
  * Parts of code stolen from {@link net.dv8tion.jda.api.MessageBuilder}
  */
 public class MessageSplitter {
-    public static List<MessageEmbed> embeds(String content, MessageEmbed base) {
+    private String lhsInsertion;
+    private String rhsInsertion;
+
+    public static List<MessageEmbed> embeds(CharSequence content, MessageEmbed base) {
         return new MessageSplitter(content).splitEmbeds(base);
     }
 
-    public static List<MessageEmbed> embeds(String content, EmbedBuilder base) {
+    public static List<MessageEmbed> embeds(CharSequence content, EmbedBuilder base) {
         return new MessageSplitter(content).splitEmbeds(base);
     }
 
-    public static List<String> strings(String content) {
+    public static List<String> strings(CharSequence content) {
         return strings(content, Message.MAX_CONTENT_LENGTH);
     }
 
-    public static List<String> strings(String content, int maxLength, SplitPolicy... policy) {
+    public static List<String> strings(CharSequence content, int maxLength, SplitPolicy... policy) {
         return new MessageSplitter(content).split(maxLength, policy);
     }
 
     private final String content;
 
-    public MessageSplitter(String content) {
-        this.content = content;
+    public MessageSplitter(CharSequence content) {
+        this.content = content.toString();
     }
 
     public List<MessageEmbed> splitEmbeds(MessageEmbed embed) {
@@ -84,9 +87,24 @@ public class MessageSplitter {
         return res;
     }
 
+    public void insert(String lhs, String rhs) {
+        this.lhsInsertion = lhs;
+        this.rhsInsertion = rhs;
+    }
+
     public List<String> split(int maxLength, SplitPolicy... policy) {
         if (content.isEmpty())
             return Collections.singletonList("");
+
+        if (lhsInsertion != null && rhsInsertion != null)
+            maxLength -= lhsInsertion.length() + rhsInsertion.length();
+        else {
+            lhsInsertion = "";
+            rhsInsertion = "";
+        }
+
+        if (maxLength <= 10)
+            throw new IllegalStateException("Max length is too small");
 
         if (content.length() <= maxLength)
             return Collections.singletonList(content);
@@ -94,7 +112,7 @@ public class MessageSplitter {
         LinkedList<String> messages = new LinkedList<>();
 
         if (policy == null || policy.length == 0)
-            policy = new SplitPolicy[]{SplitPolicy.ANYWHERE};
+            policy = new SplitPolicy[]{SplitPolicy.NEWLINE, SplitPolicy.SPACE};
 
         int currentBeginIndex = 0;
 
@@ -106,16 +124,26 @@ public class MessageSplitter {
                     maxEndIndex = currentEndIndex;
             }
             if (maxEndIndex != -1) {
+                if (messages.size() > 0) {
+                    int last = messages.size() - 1;
+                    messages.set(last, messages.get(last) + rhsInsertion);
+                }
                 String substring = trimByPolicy(content.substring(currentBeginIndex, maxEndIndex), policy);
-                messages.add(substring);
+                messages.add(currentBeginIndex > 0 ? lhsInsertion + substring : substring);
                 currentBeginIndex = maxEndIndex;
                 continue;
             }
             throw new IllegalStateException("Failed to split the messages");
         }
 
-        if (currentBeginIndex < content.length())
-            messages.add(trimByPolicy(content.substring(currentBeginIndex), policy));
+        if (currentBeginIndex < content.length()) {
+            if (messages.size() > 0) {
+                int last = messages.size() - 1;
+                messages.set(last, messages.get(last) + rhsInsertion);
+            }
+            String substring = trimByPolicy(content.substring(currentBeginIndex), policy);
+            messages.add(lhsInsertion + substring);
+        }
 
         return messages;
     }
