@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import org.apache.commons.cli.CommandLine;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.commands.CommandAdapter;
+import ru.zont.dsbot.core.commands.Input;
 import ru.zont.dsbot.core.util.Strings;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ public class Ping extends CommandAdapter {
     }
 
     @Override
-    public void onCall(MessageReceivedEvent event, String content, String[] args, CommandLine cl) {
+    public void onCall(MessageReceivedEvent event, Input input) {
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("Pong!")
                 .build();
@@ -31,26 +32,21 @@ public class Ping extends CommandAdapter {
         long sentCreated = msgSent.getTimeCreated().toInstant().toEpochMilli();
 
         long createdReceived = recv - created;
-        long recvSent = sent - recv;
         long createdCreated = sentCreated - created;
-        long sentSent = sentCreated - sent;
+        long recvSent = sent - recv;
+        long createdSent = sent - created;
 
         msgSent.editMessageEmbeds(new EmbedBuilder(embed).setDescription("""
                 Created - Received: `%04dms` *inaccurate*
                 Messages diff: `%04dms`
                 Sending took: `%04dms`
-                Sent - Created: `%04dms` *inaccurate*""".formatted(createdReceived, createdCreated, recvSent, sentSent))
+                Created - Sent: `%04dms` *inaccurate*""".formatted(createdReceived, createdCreated, recvSent, createdSent))
                 .build()).queue();
     }
 
     @Override
     public String getName() {
         return "ping";
-    }
-
-    @Override
-    public String getSyntax() {
-        return getName();
     }
 
     @Override

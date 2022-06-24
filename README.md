@@ -6,13 +6,14 @@
 - [x] Embed splitter
 - [x] Error reporter
 - [ ] Commands
-  - [ ] Input (CLI)
+  - [x] Input (CLI)
   - [ ] Permission utils
     - [ ] Foreign servers
 
 ### Beta
 
 - [ ] Services (loops in legacy)
+- [ ] Routing for functions
 - [ ] Parser and other utils from legacy
 
 ### Release

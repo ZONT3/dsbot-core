@@ -41,7 +41,7 @@ public class Exp {
     private static ZDSBot mainBot(String token) throws LoginException, InterruptedException {
         return ZDSBotBuilder.createLight(token)
                 .config(Config.class, BotConfig.class)
-                .addCommandAdapters(Ping.class)
+                .addCommandAdapters(Ping.class, Help.class)
                 .addDefaultIntents()
                 .setCacheAll()
                 .build();

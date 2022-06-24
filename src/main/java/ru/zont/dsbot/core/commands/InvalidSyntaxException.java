@@ -19,6 +19,6 @@ public class InvalidSyntaxException extends DescribedException {
     public InvalidSyntaxException(String description, CommandAdapter adapter) {
         super(Strings.CORE.get("err.args.title"), description != null
                 ? String.join("\n\n", description, adapter.getSyntax())
-                : Strings.CORE.get("err.args.syntax", adapter.getSyntax(), adapter.getConfig().getPrefix(), adapter.getCanonicalName()));
+                : Strings.CORE.get("err.args.syntax", adapter.getSyntax(), adapter.getConfig().getPrefix(), adapter.getCallableName()));
     }
 }

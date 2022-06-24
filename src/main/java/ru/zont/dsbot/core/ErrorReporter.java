@@ -34,10 +34,16 @@ public class ErrorReporter {
         reports = new HashMap<>();
     }
 
+    public long reportError(ResponseTarget reportTo, Throwable cause) {
+        return reportError(reportTo, null, null, null,
+                DescribedException.ERROR_COLOR, cause, true, false);
+    }
+
     @SuppressWarnings("UnusedReturnValue")
-    public long reportError(ResponseTarget reportTo, String title, String description, String picture, int color, Throwable cause) {
+    public long reportError(ResponseTarget reportTo, String title, String description,
+                            String picture, int color, Throwable cause, boolean displayCause, boolean alwaysRepeat) {
         try {
-            return reportErrorWrapped(reportTo, title, description, picture, color, cause);
+            return reportErrorWrapped(reportTo, title, description, picture, color, cause, displayCause, alwaysRepeat);
         } catch (Throwable t) {
             log.error(context.formatLog("Cannot report error: {}\n{}"), title, description);
             log.error("Cause:", t);
@@ -46,7 +52,9 @@ public class ErrorReporter {
         return 0;
     }
 
-    private synchronized long reportErrorWrapped(ResponseTarget reportTo, String title, String description, String picture, int color, Throwable cause) {
+    private synchronized long reportErrorWrapped(ResponseTarget reportTo, String title, String description,
+                                                 String picture, int color, Throwable cause,
+                                                 boolean displayCause, boolean alwaysRepeat) {
         String id = getId(title, description, cause);
         Report report = reports.getOrDefault(id, null);
         long period = getErrorRepeatPeriod();
@@ -57,7 +65,7 @@ public class ErrorReporter {
         if (!ResponseTarget.isValid(reportTo))
             throw new IllegalStateException("Cannot find log channel");
 
-        boolean chk = report == null || current - report.lastReport > period;
+        boolean chk = alwaysRepeat || report == null || current - report.lastReport > period;
         if (!chk) {
             for (Message msg : report.messages) {
                 String msgId = msg.getId();
@@ -69,7 +77,7 @@ public class ErrorReporter {
             }
         }
         if (chk) {
-            newReport(reportTo, title, description, picture, color, cause, id);
+            newReport(reportTo, title, description, picture, color, cause, displayCause, id, alwaysRepeat);
             return 0;
         }
 
@@ -96,6 +104,8 @@ public class ErrorReporter {
         EmbedBuilder builder = new EmbedBuilder(last.getEmbeds().get(0)).setFooter(footer);
         last.editMessageEmbeds(builder.build()).queue();
 
+        log.error(context.formatLog("Repeated error: {}"), cause.getClass().getName());
+
         return report.count;
     }
 
@@ -111,10 +121,12 @@ public class ErrorReporter {
     }
 
     private void newReport(ResponseTarget reportTo, String title, String description,
-                           String picture, int color, Throwable cause, String id) {
+                           String picture, int color, Throwable cause, boolean displayCause, String id,
+                           boolean alwaysRepeat) {
         MessageBatch messages = MessageBatch.sendNow(reportTo.responseEmbed(
-                errorMessage(title, description, picture, color, cause)));
-        reports.put(id, new Report(messages, System.currentTimeMillis() / 1000));
+                errorMessage(title, description, picture, color, cause, displayCause)));
+        if (!alwaysRepeat)
+            reports.put(id, new Report(messages, System.currentTimeMillis() / 1000));
 
         log.error(context.formatLog("Reported error: {}\n{}"), title, description);
         log.error("Exception:", cause);
@@ -127,7 +139,7 @@ public class ErrorReporter {
         return id.toString();
     }
 
-    public List<MessageEmbed> errorMessage(String title, String description, String picture, int color, Throwable cause) {
+    public List<MessageEmbed> errorMessage(String title, String description, String picture, int color, Throwable cause, boolean displayCause) {
         if (color <= 0)
             color = DescribedException.ERROR_COLOR;
 
@@ -137,7 +149,7 @@ public class ErrorReporter {
                 .setImage(picture);
 
         StringBuilder content = new StringBuilder(description);
-        if (cause != null) {
+        if (displayCause) {
             content.append("\n").append("```\n");
             try (StringBuilderWriter writer = new StringBuilderWriter(content);
                  PrintWriter pw = new PrintWriter(writer)) {
@@ -147,7 +159,7 @@ public class ErrorReporter {
         }
 
         MessageSplitter splitter = new MessageSplitter(content);
-        if (cause != null) splitter.insert("```\n", "\n```");
+        if (displayCause) splitter.insert("```\n", "\n```");
         return splitter.splitEmbeds(builder);
     }
 
