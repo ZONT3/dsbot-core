@@ -85,6 +85,12 @@ public class ResponseTarget {
         }
     }
 
+    public MessageChannel getChannel() {
+        if (!isValid()) return null;
+        if (channel != null) return channel;
+        return message.getChannel();
+    }
+
     public boolean isValid() {
         return channel != null || message != null;
     }

@@ -15,13 +15,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 public abstract class GuildListenerAdapter implements EventListener {
-    protected final Logger log;
-
     private final GuildContext context;
 
     public GuildListenerAdapter(GuildContext context) {
         this.context = context;
-        log = LoggerFactory.getLogger("%s(%s)".formatted(getClass().getName(), getContext().getGuildNameNormalized()));
     }
 
     @Override

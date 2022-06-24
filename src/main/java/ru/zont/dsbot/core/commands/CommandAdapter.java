@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.listeners;
+package ru.zont.dsbot.core.commands;
 
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
@@ -44,6 +44,16 @@ public abstract class CommandAdapter {
 
     public abstract String getName();
 
+    public abstract String getShortDesc();
+
+    public String getDescription() {
+        return "";
+    }
+
+    public String getSyntax() {
+        return "<not provided>";
+    }
+
     public List<String> getAliases() {
         return Collections.emptyList();
     }
@@ -58,10 +68,6 @@ public abstract class CommandAdapter {
     }
 
     public boolean dontCallByName() {
-        return false;
-    }
-
-    public boolean shouldCheckByRawContent() {
         return false;
     }
 }

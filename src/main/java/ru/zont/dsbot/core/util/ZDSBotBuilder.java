@@ -8,7 +8,7 @@ import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
-import ru.zont.dsbot.core.listeners.CommandAdapter;
+import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 
 import javax.security.auth.login.LoginException;

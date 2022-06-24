@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.listeners;
+package ru.zont.dsbot.core.commands;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -6,6 +6,9 @@ import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
+import ru.zont.dsbot.core.util.DescribedException;
+import ru.zont.dsbot.core.util.Strings;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,23 +22,21 @@ public class CommandListener extends GuildListenerAdapter {
     @Override
     public void onEvent(@NotNull Guild guild, @NotNull GenericEvent genericEvent) {
         if (genericEvent instanceof final MessageReceivedEvent event) {
-//            try {
-//                handleEvent(event);
-//            } catch (CommandNotFoundException | NotImplementedException ignored) {
-//            } catch (DescribedException e) {
-//                log.info("DescribedException from user %s, command string: %s".formatted(
-//                        event.getAuthor().getAsTag(),
-//                        event.getMessage().getContentRaw()
-//                ));
-//                log.info("%s: %s".formatted(e.getTitle(), e.getDescription()), e);
-//                getContext().getErrorReporter().reportError(event.getChannel(), event.getMessage(), e)
-//            } catch (Throwable e) {
-//                getContext().getErrorReporter().reportError(
-//                        getContext().getResponseTarget(event),
-//                        e,
-//                        Strings.CORE.get("err.unexpected"),
-//                        e.getMessage());
-//            }
+            try {
+                handleEvent(event);
+            } catch (DescribedException e) {
+                getContext().getErrorReporter().reportError(getContext().getResponseTarget(event),
+                        e.getTitle(),
+                        e.getDescription(),
+                        e.getPicture(),
+                        e.getColor(),
+                        e.getCause() != e ? e.getCause() : null);
+            } catch (Throwable e) {
+                getContext().getErrorReporter().reportError(getContext().getResponseTarget(event),
+                        Strings.CORE.get("err.unexpected"),
+                        Strings.CORE.get("err.unexpected.foot"),
+                        null, 0, e);
+            }
         }
     }
 
@@ -55,11 +56,20 @@ public class CommandListener extends GuildListenerAdapter {
                     .toList();
 
             if (found.size() > 1) {
-
+                StringBuilder desc = new StringBuilder(Strings.CORE.get("err.ambiguous.desc")).append("\n```");
+                for (CommandAdapter a : found) {
+                    desc.append(" - ")
+                            .append(a.getName())
+                            .append(": ")
+                            .append(a.getShortDesc())
+                            .append("\n");
+                }
+                throw new DescribedException(Strings.CORE.get("err.ambiguous"), desc.append("```").toString());
             } else if (found.size() == 1) {
                 adapter = found.get(0);
+                // TODO {@link ru.zont.dsbot.core.commands.Input} shit.
             } else {
-
+                throw new CommandNotFoundException();
             }
         }
     }

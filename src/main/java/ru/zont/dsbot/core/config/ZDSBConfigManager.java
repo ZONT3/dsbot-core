@@ -8,8 +8,6 @@ import java.util.HashMap;
 import java.util.function.Function;
 
 public class ZDSBConfigManager<A extends ZDSBBasicConfig, B extends ZDSBBotConfig> {
-    private static final Logger log = LoggerFactory.getLogger(ZDSBConfigManager.class);
-
     private final File dir;
     private final Class<A> instClass;
     private final Class<B> botConfigClass;

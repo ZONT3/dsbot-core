@@ -3,12 +3,15 @@ package ru.zont.dsbot.core;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.PrivateChannel;
+import net.dv8tion.jda.api.entities.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
-import ru.zont.dsbot.core.listeners.CommandAdapter;
+import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildReadyListener;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 
@@ -29,6 +32,7 @@ public class ZDSBot {
     private final ArrayList<Class<? extends GuildListenerAdapter>> guildListeners;
     private final String botVersion;
     private final String botNameLong;
+    private final ErrorReporter errorReporter;
 
     public ZDSBot(JDABuilder jdaBuilder,
                   ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
@@ -72,6 +76,8 @@ public class ZDSBot {
         jdaBuilder.addEventListeners(new GuildReadyListener(this));
         jda = jdaBuilder.build();
         jda.awaitReady();
+
+        errorReporter = new ErrorReporter(this);
     }
 
     public static String loadCoreVersion() {
@@ -141,5 +147,22 @@ public class ZDSBot {
         } else context = contextStore.get(id);
 
         context.update(guild, notExist);
+    }
+
+    public MessageChannel findLogChannel() {
+        for (String operator : getConfig().getOperators()) {
+            try {
+                User user = getJda().retrieveUserById(operator).complete();
+                PrivateChannel privateChannel = user.openPrivateChannel().complete();
+                if (privateChannel != null) {
+                    return privateChannel;
+                }
+                log.warn("Cannot open PM with {}", user.getName());
+            } catch (Throwable t) {
+                log.warn("Cannot open PM with %s".formatted(operator), t);
+            }
+        }
+        log.error("Cannot find log channel. OPs count: {}", getConfig().getOperators().size());
+        return null;
     }
 }
