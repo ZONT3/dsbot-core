@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.zont.dsbot.core.commands.CommandListener;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
@@ -72,6 +73,9 @@ public class ZDSBot {
                 } else return botNameLong + " - %s config".formatted(configName);
             }
         });
+
+        for (Class<? extends CommandAdapter> adapter : commandAdapters)
+            log.info("CommandAdapter {} registered", adapter.getSimpleName());
 
         jdaBuilder.addEventListeners(new GuildReadyListener(this));
         jda = jdaBuilder.build();
@@ -143,6 +147,7 @@ public class ZDSBot {
         boolean notExist = !contextStore.containsKey(id);
         if (notExist) {
             context = new GuildContext(this, guild);
+            getJda().addEventListener(new CommandListener(context));
             contextStore.put(id, context);
         } else context = contextStore.get(id);
 

@@ -112,7 +112,7 @@ public class ErrorReporter {
 
     private void newReport(ResponseTarget reportTo, String title, String description,
                            String picture, int color, Throwable cause, String id) {
-        MessageBatch messages = MessageBatch.sendNow(reportTo.response(
+        MessageBatch messages = MessageBatch.sendNow(reportTo.responseEmbed(
                 errorMessage(title, description, picture, color, cause)));
         reports.put(id, new Report(messages, System.currentTimeMillis() / 1000));
 

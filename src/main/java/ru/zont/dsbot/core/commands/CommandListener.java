@@ -4,7 +4,12 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.ParseException;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.DescribedException;
@@ -15,6 +20,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class CommandListener extends GuildListenerAdapter {
+    private static final Logger log = LoggerFactory.getLogger(CommandListener.class);
+
+    private final DefaultParser defaultParser = new DefaultParser(false);
+
     public CommandListener(GuildContext context) {
         super(context);
     }
@@ -67,11 +76,23 @@ public class CommandListener extends GuildListenerAdapter {
                 throw new DescribedException(Strings.CORE.get("err.ambiguous"), desc.append("```").toString());
             } else if (found.size() == 1) {
                 adapter = found.get(0);
-                // TODO {@link ru.zont.dsbot.core.commands.Input} shit.
-            } else {
-                throw new CommandNotFoundException();
             }
         }
+
+        if (adapter == null) throw new CommandNotFoundException();
+
+        String[] args = ArgumentTokenizer.tokenize(content).toArray(String[]::new);
+        CommandLine cl = null;
+
+        try {
+            cl = defaultParser.parse(adapter.getOptions(), args, adapter.doStopAtNonOption());
+        } catch (ParseException e) {
+            if (adapter.doStopAtNonOption())
+                log.error(getContext().formatLog("ParseException on parsing %s", adapter.getName()), e);
+            else throw new InvalidSyntaxException(null, adapter);
+        }
+
+        adapter.onCall(event, content, args, cl);
     }
 
     private String stripPrefix(String inputString) {

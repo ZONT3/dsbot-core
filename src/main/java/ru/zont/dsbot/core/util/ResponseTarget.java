@@ -7,7 +7,6 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class ResponseTarget {
 
@@ -40,7 +39,15 @@ public class ResponseTarget {
         this.message = message;
     }
 
-    public Deque<MessageAction> response(List<MessageEmbed> embeds) {
+    public MessageAction responseEmbed(MessageEmbed embed) {
+        if (channel != null)
+            return channel.sendMessageEmbeds(embed);
+        else if (message != null)
+            return message.replyEmbeds(embed);
+        else return null;
+    }
+
+    public Deque<MessageAction> responseEmbed(List<MessageEmbed> embeds) {
         final LinkedList<MessageAction> list = new LinkedList<>();
         final BiConsumer<List<MessageEmbed>, Integer> respFnc;
 

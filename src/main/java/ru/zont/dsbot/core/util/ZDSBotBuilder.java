@@ -65,22 +65,26 @@ public class ZDSBotBuilder {
         return this;
     }
 
-    public final void addCommandAdapters(Class<? extends CommandAdapter> adapter) {
+    public final ZDSBotBuilder addCommandAdapters(Class<? extends CommandAdapter> adapter) {
         commandAdapters.add(adapter);
+        return this;
     }
 
-    public final void addGuildListeners(Class<? extends GuildListenerAdapter> listener) {
+    public final ZDSBotBuilder addGuildListeners(Class<? extends GuildListenerAdapter> listener) {
         guildListeners.add(listener);
+        return this;
     }
 
     @SafeVarargs
-    public final void addCommandAdapters(Class<? extends CommandAdapter>... adapters) {
+    public final ZDSBotBuilder addCommandAdapters(Class<? extends CommandAdapter>... adapters) {
         commandAdapters.addAll(Arrays.asList(adapters));
+        return this;
     }
 
     @SafeVarargs
-    public final void addGuildListeners(Class<? extends GuildListenerAdapter>... listeners) {
+    public final ZDSBotBuilder addGuildListeners(Class<? extends GuildListenerAdapter>... listeners) {
         guildListeners.addAll(Arrays.asList(listeners));
+        return this;
     }
 
     public <T extends ZDSBBasicConfig> ZDSBotBuilder defaultConfig(Class<T> configClass) {
