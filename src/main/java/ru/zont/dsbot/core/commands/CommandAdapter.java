@@ -12,7 +12,6 @@ import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.Strings;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Collections;
@@ -73,7 +72,7 @@ public abstract class CommandAdapter {
         return getConfig().getPrefix();
     }
 
-    public abstract void onCall(MessageReceivedEvent event, Input input);
+    public abstract void onCall(MessageReceivedEvent event, Input input, Object... params);
 
     public abstract String getName();
 
@@ -177,5 +176,11 @@ public abstract class CommandAdapter {
             }
             return desc.append("```").toString();
         }
+    }
+
+    protected final void call(String content, Object... params) {
+        final Input input = new Input(content);
+        CommandAdapter adapter = input.findAndApplyAdapter(getContext());
+        adapter.onCall(null, input, params);
     }
 }

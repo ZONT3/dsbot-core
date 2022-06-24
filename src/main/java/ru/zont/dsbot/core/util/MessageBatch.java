@@ -1,199 +1,57 @@
 package ru.zont.dsbot.core.util;
 
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class MessageBatch implements Deque<Message> {
-    private final Deque<Message> messages;
-
-    public MessageBatch(Deque<Message> messages) {
-        this.messages = messages;
+public class MessageBatch extends LinkedList<Message> {
+    public MessageBatch(Collection<Message> messages) {
+        super(messages);
     }
 
     public static MessageBatch sendNow(Deque<MessageAction> actions) {
-        LinkedList<Message> list = new LinkedList<>();
-        for (MessageAction action : actions) list.add(action.complete());
-        return new MessageBatch(list);
+        return new MessageBatch(actions.stream().map(RestAction::complete).collect(Collectors.toList()));
     }
 
-    @Override
-    public Message getFirst() {
-        return messages.getFirst();
+    public void updatePresence(MessageChannel channel) {
+        LinkedList<Message> toRemove = new LinkedList<>();
+        for (Message message : this) {
+            try {
+                channel.retrieveMessageById(message.getId()).complete();
+            } catch (ErrorResponseException ignored) {
+                toRemove.add(message);
+            }
+        }
+        for (Message message : toRemove) remove(message);
     }
 
-    @Override
-    public Message getLast() {
-        return messages.getLast();
-    }
+    public void updateEmbeds(List<MessageEmbed> embeds, MessageChannel channel) {
+        updatePresence(channel);
+        int toEdit;
+        if (embeds.size() < size()) {
+            for (int i = 0; i < size() - embeds.size(); i++) {
+                Message message = removeLast();
+                message.delete().queue();
+            }
+            toEdit = size();
+        } else if (embeds.size() > size()) {
+            toEdit = size();
+            for (MessageEmbed embed : embeds.subList(size(), embeds.size())) {
+                add(channel.sendMessageEmbeds(embed).complete());
+            }
+        } else toEdit = size();
 
-    @Override
-    public void addFirst(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void addLast(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean offerFirst(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean offerLast(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message removeFirst() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message removeLast() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message pollFirst() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message pollLast() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message peekFirst() {
-        return messages.peekFirst();
-    }
-
-    @Override
-    public Message peekLast() {
-        return messages.peekFirst();
-    }
-
-    @Override
-    public boolean removeFirstOccurrence(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean removeLastOccurrence(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean add(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean offer(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message remove() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message poll() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message element() {
-        return null;
-    }
-
-    @Override
-    public Message peek() {
-        return null;
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends Message> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void push(Message message) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Message pop() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean contains(Object o) {
-        return messages.contains(o);
-    }
-
-    @Override
-    public int size() {
-        return messages.size();
-    }
-
-    @Override
-    public Iterator<Message> iterator() {
-        return messages.iterator();
-    }
-
-    @NotNull
-    @Override
-    public Iterator<Message> descendingIterator() {
-        return messages.descendingIterator();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return messages.isEmpty();
-    }
-
-    @NotNull
-    @Override
-    public Object @NotNull [] toArray() {
-        return messages.toArray();
-    }
-
-    @NotNull
-    @Override
-    public <T> T @NotNull [] toArray(@NotNull T @NotNull [] a) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean containsAll(@NotNull Collection<?> c) {
-        return messages.containsAll(c);
-    }
-
-    @Override
-    public boolean removeAll(@NotNull Collection<?> c) {
-        return messages.removeAll(c);
-    }
-
-    @Override
-    public boolean retainAll(@NotNull Collection<?> c) {
-        return messages.retainAll(c);
-    }
-
-    @Override
-    public void clear() {
-        throw new UnsupportedOperationException();
+        Iterator<Message> it1 = iterator();
+        Iterator<MessageEmbed> it2 = embeds.subList(0, toEdit).iterator();
+        while (it1.hasNext() && it2.hasNext()) {
+            it1.next().editMessageEmbeds(it2.next()).queue();
+        }
     }
 }

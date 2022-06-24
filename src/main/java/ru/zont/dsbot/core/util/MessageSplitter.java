@@ -16,6 +16,8 @@ import java.util.regex.Pattern;
 public class MessageSplitter {
     private String lhsInsertion;
     private String rhsInsertion;
+    private boolean keepTitle = false;
+    private boolean numerateTitle = false;
 
     public static List<MessageEmbed> embeds(CharSequence content, MessageEmbed base) {
         return new MessageSplitter(content).splitEmbeds(base);
@@ -43,6 +45,10 @@ public class MessageSplitter {
         return splitEmbeds(new EmbedBuilder(embed));
     }
 
+    public List<MessageEmbed> splitEmbeds(MessageEmbed embed, SplitPolicy... policy) {
+        return splitEmbeds(new EmbedBuilder(embed), policy);
+    }
+
     public List<MessageEmbed> splitEmbeds(EmbedBuilder builder, SplitPolicy... policy) {
         builder.setDescription("");
         final int leftLen = Math.min(
@@ -59,7 +65,8 @@ public class MessageSplitter {
             bot = new EmbedBuilder(builder);
             mid = new EmbedBuilder(builder);
             for (EmbedBuilder bb : List.of(bot, mid)) {
-                bb.setTitle(null, null);
+                if (!keepTitle)
+                    bb.setTitle(null, null);
                 bb.setAuthor(null, null);
                 bb.setImage(null);
                 bb.setThumbnail(null);
@@ -76,12 +83,26 @@ public class MessageSplitter {
         }
 
         LinkedList<MessageEmbed> res = new LinkedList<>();
-        res.add(top.setDescription(split.get(0)).build());
 
+        MessageEmbed topEmbed = top.setDescription(split.get(0)).build();
+        if (keepTitle && numerateTitle && topEmbed.getTitle() != null)
+            topEmbed = new EmbedBuilder(topEmbed).setTitle(topEmbed.getTitle() + " #1").build();
+        res.add(topEmbed);
+
+        int i = 2;
         if (bot != null) {
-            for (String s : split.subList(1, split.size() - 1))
-                res.add(new EmbedBuilder(mid).setDescription(s).build());
-            res.add(bot.setDescription(split.get(split.size() - 1)).build());
+            for (String s : split.subList(1, split.size() - 1)) {
+                MessageEmbed embed = new EmbedBuilder(mid).setDescription(s).build();
+                if (keepTitle && numerateTitle && embed.getTitle() != null)
+                    embed = new EmbedBuilder(embed).setTitle(embed.getTitle() + " #" + i).build();
+                res.add(embed);
+                i++;
+            }
+
+            MessageEmbed botEmbed = bot.setDescription(split.get(split.size() - 1)).build();
+            if (keepTitle && numerateTitle && botEmbed.getTitle() != null)
+                botEmbed = new EmbedBuilder(botEmbed).setTitle(botEmbed.getTitle() + " #" + i).build();
+            res.add(botEmbed);
         }
 
         return res;
@@ -157,6 +178,11 @@ public class MessageSplitter {
                 substring = p.trim(substring);
         } while (lastLength != substring.length());
         return substring;
+    }
+
+    public void setKeepTitle(boolean keep, boolean numerate) {
+        keepTitle = keep;
+        numerateTitle = numerate;
     }
 
     public interface SplitPolicy {

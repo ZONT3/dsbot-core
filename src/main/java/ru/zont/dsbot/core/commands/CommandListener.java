@@ -44,8 +44,8 @@ public class CommandListener extends GuildListenerAdapter {
         final String contentMsg = message.getContentDisplay();
         if (!contentMsg.startsWith(getConfig().getPrefix()))
             return;
-        final Input input = new Input(stripPrefix(contentMsg));
 
+        final Input input = new Input(stripPrefix(contentMsg));
         CommandAdapter adapter = input.findAndApplyAdapter(getContext());
         adapter.onCall(event, input);
     }

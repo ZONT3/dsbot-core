@@ -26,7 +26,7 @@ public class Help extends CommandAdapter {
     }
 
     @Override
-    public void onCall(MessageReceivedEvent event, Input input) {
+    public void onCall(MessageReceivedEvent event, Input input, Object... params) {
         CommandLine cl = input.getCommandLine();
         List<String> argList = cl.getArgList();
 
