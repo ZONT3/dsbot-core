@@ -45,7 +45,7 @@ public class ErrorReporter {
         try {
             return reportErrorWrapped(reportTo, title, description, picture, color, cause, displayCause, alwaysRepeat);
         } catch (Throwable t) {
-            log.error(context.formatLog("Cannot report error: {}\n{}"), title, description);
+            log.error(formatLog("Cannot report error: {}\n{}"), title, description);
             log.error("Cause:", t);
             log.error("Error to report:", cause);
         }
@@ -104,7 +104,7 @@ public class ErrorReporter {
         EmbedBuilder builder = new EmbedBuilder(last.getEmbeds().get(0)).setFooter(footer);
         last.editMessageEmbeds(builder.build()).queue();
 
-        log.error(context.formatLog("Repeated error: {}"), cause.getClass().getName());
+        log.error(formatLog("Repeated error: {}"), cause.getClass().getName());
 
         return report.count;
     }
@@ -128,8 +128,12 @@ public class ErrorReporter {
         if (!alwaysRepeat)
             reports.put(id, new Report(messages, System.currentTimeMillis() / 1000));
 
-        log.error(context.formatLog("Reported error: {}\n{}"), title, description);
+        log.error(formatLog("Reported error: {}\n{}"), title, description);
         log.error("Exception:", cause);
+    }
+
+    private String formatLog(String s) {
+        return context != null ? context.formatLog(s) : "[GLOBAL] %s".formatted(s);
     }
 
     private String getId(String title, String description, Throwable cause) {

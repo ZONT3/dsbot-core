@@ -170,4 +170,8 @@ public class ZDSBot {
         log.error("Cannot find log channel. OPs count: {}", getConfig().getOperators().size());
         return null;
     }
+
+    public ErrorReporter getErrorReporter() {
+        return errorReporter;
+    }
 }

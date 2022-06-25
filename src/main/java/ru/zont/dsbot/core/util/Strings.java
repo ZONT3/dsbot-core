@@ -3,14 +3,13 @@ package ru.zont.dsbot.core.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.naming.NameNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
+import java.time.Duration;
 import java.util.*;
 
 public class Strings {
@@ -20,6 +19,8 @@ public class Strings {
     public static Strings CORE = new Strings("strings_core");
 
     private final ResourceBundle strLocal;
+
+    public static final int DS_CODE_BLOCK_LINE_LENGTH = 60;
 
     public Strings() {
         this(null);
@@ -31,6 +32,49 @@ public class Strings {
             if (bundleName == null)
                 log.warn("No local strings file defined, falling back to CORE's");
         } else this.strLocal = ResourceBundle.getBundle(bundleName, new UTF8Control());
+    }
+
+    public static String millisToDuration(long millis) {
+        return CORE.millisToDuration(millis, 5, false);
+    }
+
+    public String millisToDuration(long millis, int maxFieldCount, boolean localise) {
+        final Duration duration = Duration.ofMillis(millis);
+
+        long sec = duration.toSecondsPart();
+        float secFloat = sec + duration.toMillisPart() / 1000f;
+        int min = duration.toMinutesPart();
+        int hr = duration.toHoursPart();
+        int day = duration.toHoursPart();
+        int wk = (int) (duration.toDays() / 7);
+
+        final List<String> strings;
+        if (localise)
+            strings = List.of(
+                    "duration.sec", "duration.min", "duration.hr",
+                    "duration.day", "duration.wk");
+        else strings = List.of("sec", "min", "hr", "d", "w");
+
+        final List<? extends Number> numbers = List.of(secFloat, min, hr, day, wk);
+
+        final LinkedList<String> out = new LinkedList<>();
+        for (int i = 0; i < strings.size(); i++) {
+            String s = localise ? get(strings.get(i)) : strings.get(i);
+            Number n = numbers.get(i);
+
+            if (i >= maxFieldCount || n instanceof Integer && n.intValue() == 0)
+                break;
+
+            final String format;
+            if (n instanceof Float) format = "%.03f %s";
+            else format = "%d %s";
+            out.add(format.formatted(n, s));
+        }
+        final ArrayList<String> outReversed = new ArrayList<>();
+        final Iterator<String> it = out.descendingIterator();
+        while (it.hasNext()) outReversed.add(it.next());
+
+        return String.join(" ", outReversed);
     }
 
     public String get(String id, Object... args) {

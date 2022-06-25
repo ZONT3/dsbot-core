@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import ru.zont.dsbot.core.GuildContext;
 
 public class DescribedException extends RuntimeException {
-    public static final int ERROR_COLOR = 0x910A0A;
+    public static final int ERROR_COLOR = 0xB31C1C;
     private final String description;
     private final String picture;
     private final int color;
