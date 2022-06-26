@@ -68,7 +68,7 @@ public class Strings {
             final String format;
             if (n instanceof Float) format = "%.03f %s";
             else format = "%d %s";
-            out.add(format.formatted(n, s));
+            out.add(String.format(Locale.ROOT, format, n, s));
         }
         final ArrayList<String> outReversed = new ArrayList<>();
         final Iterator<String> it = out.descendingIterator();

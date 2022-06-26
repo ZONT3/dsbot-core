@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands.execution;
+package ru.zont.dsbot.core.executil;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -9,10 +9,12 @@ import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.Strings;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ExecutionManager {
@@ -27,13 +29,14 @@ public class ExecutionManager {
     private final ArrayList<Process> processes = new ArrayList<>();
     private final ArrayList<StreamPrinter> stdoutList = new ArrayList<>();
     private final ArrayList<StreamPrinter> stderrList = new ArrayList<>();
+    private final ArrayList<PrintWriter> stdinList = new ArrayList<>();
     private final HashSet<Integer> terminated = new HashSet<>();
 
     public ExecutionManager(ZDSBot bot) {
         this.bot = bot;
     }
 
-    public int newProcess(String[] args, String name, MessageChannel output, boolean verbose) {
+    public int newProcess(String[] args, String name, MessageChannel output, Consumer<Integer> onExit, boolean verbose, boolean autoFlush) {
         if (name == null) name = args[0];
         final String finalName = name;
         try {
@@ -46,6 +49,7 @@ public class ExecutionManager {
                         new StreamPrinter("[%d] %s stdout".formatted(pid, name), output, process.getInputStream());
                 final StreamPrinter stderr =
                         new StreamPrinter("[%d] %s stderr".formatted(pid, name), output, process.getErrorStream());
+                stdinList.add(new PrintWriter(process.getOutputStream(), autoFlush));
                 stdoutList.add(stdout);
                 stderrList.add(stderr);
                 stderr.setColor(STDERR_COLOR);
@@ -60,17 +64,21 @@ public class ExecutionManager {
                     stdout.setColor(exitCode == 0 ? COMPLETE_COLOR : ERROR_COLOR);
                     stderr.setColor(exitCode == 0 ? COMPLETE_COLOR_STDERR : ERROR_COLOR_STDERR);
 
-                    if (verbose)
+                    if (verbose || exitCode != 0)
                         verboseEnd(output, pid, finalName, exitCode, System.currentTimeMillis() - startTimestamp);
 
-                    processes.remove(pid);
+                    processes.set(pid - 1, null);
+
+                    if (onExit != null)
+                        onExit.accept(exitCode);
                 });
             }
 
             return pid;
         } catch (IOException e) {
             bot.getErrorReporter().reportError(ResponseTarget
-                    .channel(output != null ? output : bot.findLogChannel()), e);
+                    .channel(output != null ? output : bot.findLogChannel()), "Cannot run process", null, null,
+                    DescribedException.ERROR_COLOR, e, true, false);
         }
         return -1;
     }
@@ -125,20 +133,32 @@ public class ExecutionManager {
         return null;
     }
 
-    public synchronized void killProcess(int id, boolean force) {
+    public PrintWriter getStdin(int id) {
+        if ((id - 1) < stdinList.size())
+            return stdinList.get(id - 1);
+        return null;
+    }
+
+    public synchronized boolean killProcess(int id, boolean force) {
         final Process process = findProcess(id);
         if (process != null && process.isAlive()) {
             if (force) process.destroyForcibly();
             else process.destroy();
             terminated.add(id);
+            return true;
         }
+        return false;
     }
 
     public StreamPrinter getStdout(int id) {
-        return stdoutList.get(id);
+        if ((id - 1) < stdoutList.size())
+            return stdoutList.get(id - 1);
+        return null;
     }
 
     public StreamPrinter getStderr(int id) {
-        return stderrList.get(id);
+        if ((id - 1) < stderrList.size())
+            return stderrList.get(id - 1);
+        return null;
     }
 }

@@ -62,12 +62,17 @@ public class ErrorReporter {
 
         if (!ResponseTarget.isValid(reportTo))
             reportTo = ResponseTarget.channel(getLogChannel());
-        if (!ResponseTarget.isValid(reportTo))
-            throw new IllegalStateException("Cannot find log channel");
+        if (!ResponseTarget.isValid(reportTo)) {
+            final MessageChannel channel = reportTo.getChannel();
+            throw new IllegalStateException("Cannot find log channel. Channel null = %s, canTalk = %s"
+                    .formatted(
+                            channel == null ? "true" : "false",
+                            channel != null && channel.canTalk() ? "true" : "false"));
+        }
 
         boolean chk = alwaysRepeat || report == null || current - report.lastReport > period;
         if (!chk) {
-            for (Message msg : report.messages) {
+            for (Message msg: report.messages) {
                 String msgId = msg.getId();
                 Message retMsg = reportTo.getChannel().retrieveMessageById(msgId).complete();
                 if (retMsg == null) {
@@ -152,7 +157,7 @@ public class ErrorReporter {
                 .setTitle(title)
                 .setImage(picture);
 
-        StringBuilder content = new StringBuilder(description);
+        StringBuilder content = new StringBuilder(description != null ? description : "");
         if (displayCause) {
             content.append("\n").append("```\n");
             try (StringBuilderWriter writer = new StringBuilderWriter(content);

@@ -13,6 +13,7 @@ import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
 import ru.zont.dsbot.core.commands.CommandAdapter;
+import ru.zont.dsbot.core.executil.ExecutionManager;
 import ru.zont.dsbot.core.listeners.GuildReadyListener;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 
@@ -34,6 +35,7 @@ public class ZDSBot {
     private final String botVersion;
     private final String botNameLong;
     private final ErrorReporter errorReporter;
+    private ExecutionManager executionManager;
 
     public ZDSBot(JDABuilder jdaBuilder,
                   ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
@@ -82,6 +84,7 @@ public class ZDSBot {
         jda.awaitReady();
 
         errorReporter = new ErrorReporter(this);
+        executionManager = new ExecutionManager(this);
     }
 
     public static String loadCoreVersion() {
@@ -173,5 +176,9 @@ public class ZDSBot {
 
     public ErrorReporter getErrorReporter() {
         return errorReporter;
+    }
+
+    public ExecutionManager getExecutionManager() {
+        return executionManager;
     }
 }

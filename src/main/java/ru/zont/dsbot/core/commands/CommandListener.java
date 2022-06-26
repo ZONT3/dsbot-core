@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.DescribedException;
+import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.Strings;
 
 import java.util.regex.Pattern;
@@ -45,9 +46,14 @@ public class CommandListener extends GuildListenerAdapter {
         if (!contentMsg.startsWith(getConfig().getPrefix()))
             return;
 
+        final ResponseTarget responseTarget = getContext().getResponseTarget(event);
         final Input input = new Input(stripPrefix(contentMsg));
-        CommandAdapter adapter = input.findAndApplyAdapter(getContext());
-        adapter.onCall(event, input);
+        final CommandAdapter adapter = input.findAndApplyAdapter(getContext());
+
+        if (adapter.isWriteableChannelRequired())
+            CommandAdapter.requireWritableChannel(responseTarget);
+
+        adapter.onCall(responseTarget, input, event);
     }
 
     private String stripPrefix(String inputString) {

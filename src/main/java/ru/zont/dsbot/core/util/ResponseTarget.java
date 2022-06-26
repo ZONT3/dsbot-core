@@ -93,12 +93,18 @@ public class ResponseTarget {
     }
 
     public MessageChannel getChannel() {
-        if (!isValid()) return null;
         if (channel != null) return channel;
-        return message.getChannel();
+        else if (message != null)
+            return message.getChannel();
+        return null;
+    }
+
+    public ResponseTarget toChannel() {
+        if (channel != null) return this;
+        return ResponseTarget.channel(getChannel());
     }
 
     public boolean isValid() {
-        return channel != null || message != null;
+        return (channel != null || message != null) && getChannel().canTalk();
     }
 }

@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands.execution;
+package ru.zont.dsbot.core.executil;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -11,6 +11,7 @@ import ru.zont.dsbot.core.util.ResponseTarget;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
@@ -19,8 +20,6 @@ import java.util.regex.Pattern;
 
 public class StreamPrinter {
     public static final int OUTPUT_UPDATE_PERIOD = 2000;
-    public static final int BUFFER_UPDATE_PERIOD = 600;
-    public static final Pattern PATTERN_PRE_APPEND = Pattern.compile("\r{2,}");
     private final MessageChannel channel;
     private final InputStream stream;
 
@@ -35,6 +34,7 @@ public class StreamPrinter {
     private MessageEmbed embedTemplate;
     private Supplier<MessageEmbed> templateGetter;
     private int color = -1;
+    private int currIndex = 0;
 
     public StreamPrinter(String name, MessageChannel channel, InputStream stream) {
         this.channel = channel;
@@ -60,36 +60,16 @@ public class StreamPrinter {
     }
 
     private void mainThreadRun() {
-        try (InputStreamReader reader = new InputStreamReader(stream)) {
+        try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             updaterThread.start();
 
-            StringBuilder buff = new StringBuilder();
             int next;
-            boolean fill = false;
-            long nextFill = 0;
             while ((next = reader.read()) >= 0 && updaterThread.isAlive()) {
-                boolean fillNow = false;
-                if (next == '\n' || next == '\r') {
-                    fill = true;
-                } else if (fill) {
-                    fill = false;
-                    fillNow = true;
+                append((char) next);
+                synchronized (updaterMonitor) {
+                    updaterMonitor.notifyAll();
                 }
-                fillNow = fillNow || !buff.isEmpty() && buff.charAt(buff.length() - 1) == '\n';
-
-                if (nextFill <= 0 && !buff.isEmpty())
-                    nextFill = System.currentTimeMillis() + BUFFER_UPDATE_PERIOD;
-
-                if (fillNow || !buff.isEmpty() && nextFill < System.currentTimeMillis()) {
-                    nextFill = 0;
-                    append(buff);
-                    synchronized (updaterMonitor) {
-                        updaterMonitor.notifyAll();
-                    }
-                }
-                buff.append((char) next);
             }
-            if (!buff.isEmpty()) append(buff);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -99,19 +79,20 @@ public class StreamPrinter {
         }
     }
 
-    private synchronized void append(StringBuilder buff) {
-        String buffStr = PATTERN_PRE_APPEND.matcher(buff.toString()).replaceAll("\r");
-        String before = outSheet.toString();
+    private synchronized void append(char next) {
+        final String before = outSheet.toString();
+        final int length = before.length();
 
-        if (!outSheet.isEmpty() && outSheet.charAt(outSheet.length() - 1) == '\r') {
-            final int i = outSheet.lastIndexOf("\n") + 1;
-            if (i < outSheet.length())
-                outSheet.replace(i, buffStr.length() + i, buffStr);
-            else outSheet.append(buffStr);
-        } else {
-            outSheet.append(buffStr);
+        if (next == '\r') {
+            currIndex = outSheet.lastIndexOf("\n") + 1;
+            return;
         }
-        buff.delete(0, buff.length());
+        if (next == '\n')
+            currIndex = length;
+        if (currIndex >= length)
+            outSheet.append(next);
+        else outSheet.setCharAt(currIndex, next);
+        currIndex++;
 
         if (!before.equals(outSheet.toString())) {
             invalidate();

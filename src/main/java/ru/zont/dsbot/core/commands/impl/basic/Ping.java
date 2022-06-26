@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands.basic;
+package ru.zont.dsbot.core.commands.impl.basic;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
+import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.Strings;
 
 public class Ping extends CommandAdapter {
@@ -16,11 +17,11 @@ public class Ping extends CommandAdapter {
     }
 
     @Override
-    public void onCall(MessageReceivedEvent event, Input input, Object... params) {
+    public void onCall(ResponseTarget replyTo, Input input, MessageReceivedEvent event, Object... params) {
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("Pong!")
                 .build();
-        MessageAction action = getContext().getResponseTarget(event).responseEmbed(embed);
+        MessageAction action = getResponseTarget(event, params).responseEmbed(embed);
 
         long recv = System.currentTimeMillis();
         long created = event.getMessage().getTimeCreated().toInstant().toEpochMilli();

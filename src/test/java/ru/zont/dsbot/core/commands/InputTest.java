@@ -59,4 +59,11 @@ class InputTest {
         input.applyAdapter(null, mock);
         assertEquals(code, input.getUnrecognizedAsIs());
     }
+
+    @Test
+    void getUnrecognizedAsIsConfuse() {
+        Input input = new Input("exec python -m pip install ipython");
+        input.applyAdapter(null, mock);
+        assertEquals("python -m pip install ipython", input.getUnrecognizedAsIs());
+    }
 }

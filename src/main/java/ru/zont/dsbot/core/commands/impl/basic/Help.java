@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands.basic;
+package ru.zont.dsbot.core.commands.impl.basic;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -26,7 +26,7 @@ public class Help extends CommandAdapter {
     }
 
     @Override
-    public void onCall(MessageReceivedEvent event, Input input, Object... params) {
+    public void onCall(ResponseTarget replyTo, Input input, MessageReceivedEvent event, Object... params) {
         CommandLine cl = input.getCommandLine();
         List<String> argList = cl.getArgList();
 
@@ -104,7 +104,7 @@ public class Help extends CommandAdapter {
 
     @Override
     public String getArgsSyntax() {
-        return "command [command2 [command3 ... ]]";
+        return "[command [command2 [command3 ... ]]]";
     }
 
     @Override

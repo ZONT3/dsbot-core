@@ -103,7 +103,7 @@ public class GuildContext {
     }
 
     public ResponseTarget getResponseTarget(MessageReceivedEvent event) {
-        if (!getConfig().replyToMessages.isFalse()) {
+        if (getConfig().doReplyToMessages()) {
             return new ResponseTarget(event.getMessage());
         } else {
             return new ResponseTarget(event.getChannel());

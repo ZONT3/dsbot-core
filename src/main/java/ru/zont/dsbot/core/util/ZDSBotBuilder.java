@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
+import ru.zont.dsbot.core.commands.impl.basic.*;
+import ru.zont.dsbot.core.commands.impl.execution.*;
+
 public class ZDSBotBuilder {
     private final JDABuilder jdaBuilder;
     private ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> config;
@@ -55,6 +58,18 @@ public class ZDSBotBuilder {
                 .setMemberCachePolicy(MemberCachePolicy.ALL)
                 .setChunkingFilter(ChunkingFilter.ALL);
         return this;
+    }
+
+    public ZDSBotBuilder allBasicCommands() {
+        return addCommandAdapters(Help.class, Ping.class);
+    }
+
+    public ZDSBotBuilder allExecCommands() {
+        return addCommandAdapters(Exec.class, Term.class, Do.class, Tell.class);
+    }
+
+    public ZDSBotBuilder allCoreCommands() {
+        return allExecCommands().allBasicCommands();
     }
 
     /**

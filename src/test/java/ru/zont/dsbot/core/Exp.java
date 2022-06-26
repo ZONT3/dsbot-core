@@ -2,28 +2,24 @@ package ru.zont.dsbot.core;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
-import org.apache.commons.io.IOUtils;
-import org.jetbrains.annotations.NotNull;
+import ru.zont.dsbot.core.commands.impl.basic.Help;
+import ru.zont.dsbot.core.commands.impl.basic.Ping;
+import ru.zont.dsbot.core.executil.ExecutionManager;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfig;
-import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.ZDSBotBuilder;
 
 import javax.security.auth.login.LoginException;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import ru.zont.dsbot.core.commands.basic.*;
-import ru.zont.dsbot.core.commands.execution.*;
+import ru.zont.dsbot.core.commands.impl.execution.*;
 
 public class Exp {
 
@@ -47,20 +43,13 @@ public class Exp {
         GuildContext context = bot.getGuildContext("331526118635208716");
         TextChannel channel = context.getGuild().getTextChannelById("450293189711101952");
         Message message = channel.retrieveMessageById("989619888496705556").complete();
-
-        final ScheduledExecutorService ex = Executors.newScheduledThreadPool(3);
-        final ExecutionManager manager = new ExecutionManager(bot);
-
-        for (String s: List.of("scripts/test.py", "scripts/test2.py", "scripts/test3.py")) {
-            final int id = manager.newProcess(new String[]{"python", "-u", s}, null, channel, true);
-            ex.schedule(() -> manager.killProcess(id, false), 10, TimeUnit.SECONDS);
-        }
+//        System.out.println(Charset.defaultCharset());
     }
 
     private static ZDSBot mainBot(String token) throws LoginException, InterruptedException {
         return ZDSBotBuilder.createLight(token)
                 .config(Config.class, BotConfig.class)
-                .addCommandAdapters(Ping.class, Help.class, Exec.class)
+                .allCoreCommands()
                 .addDefaultIntents()
                 .setCacheAll()
                 .build();

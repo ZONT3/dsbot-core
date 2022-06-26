@@ -25,4 +25,8 @@ public class ZDSBBasicConfig extends ZDSBConfig {
     public boolean doSkipSearchingLogChannel() {
         return skipSearchingGuildLogChannel.isTrue();
     }
+
+    public boolean doReplyToMessages() {
+        return !replyToMessages.isFalse();
+    }
 }

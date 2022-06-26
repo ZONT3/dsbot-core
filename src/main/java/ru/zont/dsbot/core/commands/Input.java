@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Input {
     private static final Logger log = LoggerFactory.getLogger(Input.class);
@@ -44,7 +46,12 @@ public class Input {
 
     public String getUnrecognizedAsIs() {
         if (commandLine.getArgs().length > 0) {
-            return content.replaceFirst(".+(?=%s)".formatted(Pattern.quote(commandLine.getArgs()[0])), "");
+            final String sep = "[\\s\"']+";
+            final Pattern pattern = Pattern.compile(
+                    commandLine.getArgList().stream().map(Pattern::quote).collect(Collectors.joining(sep)));
+            final Matcher matcher = pattern.matcher(content);
+            if (matcher.find()) return matcher.group();
+            else return content.replaceFirst(".+(?=%s)".formatted(Pattern.quote(commandLine.getArgs()[0])), "");
         } else return "";
     }
 
