@@ -9,9 +9,9 @@
   - [x] Input (CLI)
   - [ ] Permission utils
     - [ ] Foreign servers
-  - [ ] Exec
-    - [ ] Replace scanner with something more reliable to newlines
-    - [ ] Implement carriage return symbol
+  - [x] Exec
+    - [x] Replace scanner with something more reliable to newlines
+    - [x] Implement carriage return symbol
 
 ### Beta
 
