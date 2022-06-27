@@ -3,16 +3,17 @@ package ru.zont.dsbot.core.commands.impl.execution;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.cli.Options;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
-import ru.zont.dsbot.core.commands.InvalidSyntaxException;
+import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
 import ru.zont.dsbot.core.util.ResponseTarget;
 
 import java.util.List;
 
-public class Term extends CommandAdapter {
-    public Term(GuildContext context) {
-        super(context);
+public class Term extends ExecBase {
+    public Term(ZDSBot bot, GuildContext context) {
+        super(bot, context);
     }
 
     @Override

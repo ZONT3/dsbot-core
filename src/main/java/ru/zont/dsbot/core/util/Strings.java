@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core.util;
 
+import org.jetbrains.annotations.PropertyKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ public class Strings {
     private static final Logger log = LoggerFactory.getLogger(Strings.class);
 
     private static final ResourceBundle STR_CORE = ResourceBundle.getBundle("strings_core", new UTF8Control());
-    public static Strings CORE = new Strings("strings_core");
+    public static final Strings CORE = new Strings("strings_core");
 
     private final ResourceBundle strLocal;
 
@@ -77,7 +78,7 @@ public class Strings {
         return String.join(" ", outReversed);
     }
 
-    public String get(String id, Object... args) {
+    public String get(@PropertyKey(resourceBundle = "strings_core") String id, Object... args) {
         final String str;
         if (strLocal != null && strLocal.containsKey(id))
             str = strLocal.getString(id);
@@ -137,7 +138,7 @@ public class Strings {
     private static class UTF8Control extends ResourceBundle.Control {
         public ResourceBundle newBundle
                 (String baseName, Locale locale, String format, ClassLoader loader, boolean reload)
-                throws IllegalAccessException, InstantiationException, IOException
+                throws IOException
         {
             // The below is a copy of the default implementation.
             String bundleName = toBundleName(baseName, locale);

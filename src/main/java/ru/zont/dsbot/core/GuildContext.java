@@ -2,16 +2,16 @@ package ru.zont.dsbot.core;
 
 import com.ibm.icu.text.Transliterator;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.Reflect;
-import ru.zont.dsbot.core.util.ResponseTarget;
+import ru.zont.dsbot.core.util.Strings;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 public class GuildContext {
@@ -24,24 +24,41 @@ public class GuildContext {
     private final HashMap<String, CommandAdapter> commands = new HashMap<>();
     private final LinkedList<GuildListenerAdapter> listeners = new LinkedList<>();
     private final ErrorReporter errorReporter;
+    private final HashSet<String> foreignBannedCommands;
+    private final HashSet<String> guildsBannedCommands;
 
     public GuildContext(ZDSBot bot, Guild guild) {
         this.bot = bot;
         guildId = guild.getId();
         guildName = guild.getName();
 
+        guildsBannedCommands = new HashSet<>();
+        foreignBannedCommands = new HashSet<>();
+
         for (Class<? extends CommandAdapter> klass : bot.getCommandAdapters()) {
             final CommandAdapter instance = Reflect.commonsNewInstance(klass,
-                    "Cannot instantiate GuildContext",
-                    this);
+                    "Cannot instantiate Command " + klass.getName(),
+                    bot, this);
+            if (!instance.allowGuilds()) {
+                guildsBannedCommands.add(instance.getName());
+                guildsBannedCommands.addAll(instance.getAliases());
+                continue;
+            }
+            if (!instance.allowForeignGuilds() && !bot.getConfig().getApprovedGuilds().contains(guildId)) {
+                foreignBannedCommands.add(instance.getName());
+                foreignBannedCommands.addAll(instance.getAliases());
+                continue;
+            }
+            log.info(formatLog( "Command instantiated: %s", instance.getClass().getName()));
             commands.put(instance.getName(), instance);
         }
 
         for (Class<? extends GuildListenerAdapter> klass: bot.getGuildListeners()) {
             final GuildListenerAdapter instance = Reflect.commonsNewInstance(klass,
-                    "Cannot instantiate GuildContext",
-                    this);
-            getBot().getJda().addEventListener(instance);
+                    "Cannot instantiate GuildListener " + klass.getName(),
+                    bot, this);
+            log.info(formatLog( "GuildListener instantiated: %s", instance.getClass().getName()));
+            bot.getJda().addEventListener(instance);
             listeners.add(instance);
         }
 
@@ -98,16 +115,7 @@ public class GuildContext {
     }
 
     public String formatLog(String s, Object... args) {
-        return "[%s] ".formatted(getGuildNameNormalized())
-                + String.format(s, args);
-    }
-
-    public ResponseTarget getResponseTarget(MessageReceivedEvent event) {
-        if (getConfig().doReplyToMessages()) {
-            return new ResponseTarget(event.getMessage());
-        } else {
-            return new ResponseTarget(event.getChannel());
-        }
+        return String.join(" ", "[%s]".formatted(getGuildNameNormalized()), String.format(s, args));
     }
 
     public MessageChannel findLogChannel() {
@@ -134,5 +142,17 @@ public class GuildContext {
         }
 
         return channel;
+    }
+
+    public boolean isForeign() {
+        return !getBot().getConfig().getApprovedGuilds().contains(getGuildId());
+    }
+
+    public boolean isGuildBannedCommand(String commandCall) {
+        return guildsBannedCommands.contains(commandCall);
+    }
+
+    public boolean isForeignBannedCommand(String commandCall) {
+        return foreignBannedCommands.contains(commandCall);
     }
 }

@@ -4,6 +4,8 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
@@ -14,16 +16,20 @@ import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import javax.security.auth.login.LoginException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.function.Consumer;
 
 import ru.zont.dsbot.core.commands.impl.basic.*;
 import ru.zont.dsbot.core.commands.impl.execution.*;
 
 public class ZDSBotBuilder {
+    private static final Logger log = LoggerFactory.getLogger(ZDSBotBuilder.class);
+
     private final JDABuilder jdaBuilder;
     private ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> config;
     private final ArrayList<Class<? extends CommandAdapter>> commandAdapters = new ArrayList<>();
     private final ArrayList<Class<? extends GuildListenerAdapter>> guildListeners = new ArrayList<>();
+    private String version = null;
 
     public static ZDSBotBuilder createLight(String key) {
         return new ZDSBotBuilder(JDABuilder.createLight(key));
@@ -112,6 +118,17 @@ public class ZDSBotBuilder {
         return this;
     }
 
+    public ZDSBotBuilder loadVersionName(String resourceName) {
+        Properties properties = new Properties();
+        try {
+            properties.load(ZDSBot.class.getResourceAsStream("/%s.properties".formatted(resourceName)));
+        } catch (Exception e) {
+            log.error("Cannot load version config", e);
+        }
+        version = properties.getProperty("version", "UNKNOWN");
+        return this;
+    }
+
     public <A extends ZDSBBasicConfig, B extends ZDSBBotConfig> ZDSBotBuilder config(Class<A> configClass,
                                                                                      Class<B> botConfigClass) {
         config = new ZDSBConfigManager<>("cfg", configClass, botConfigClass);
@@ -120,6 +137,6 @@ public class ZDSBotBuilder {
 
     public ZDSBot build() throws LoginException, InterruptedException {
         if (config == null) defaultConfig();
-        return new ZDSBot(jdaBuilder, config, commandAdapters, guildListeners);
+        return new ZDSBot(jdaBuilder, config, commandAdapters, guildListeners, version);
     }
 }

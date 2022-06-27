@@ -3,7 +3,6 @@ package ru.zont.dsbot.core.executil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import org.apache.commons.codec.Charsets;
 import ru.zont.dsbot.core.util.MessageBatch;
 import ru.zont.dsbot.core.util.MessageSplitter;
 import ru.zont.dsbot.core.util.ResponseTarget;
@@ -14,9 +13,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
-import java.util.Scanner;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 public class StreamPrinter {
     public static final int OUTPUT_UPDATE_PERIOD = 2000;

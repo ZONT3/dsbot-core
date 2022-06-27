@@ -1,4 +1,4 @@
-package ru.zont.dsbot.core.commands;
+package ru.zont.dsbot.core.commands.exceptions;
 
 import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.Strings;

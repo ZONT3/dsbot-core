@@ -1,14 +1,10 @@
 package ru.zont.dsbot.core.util;
 
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import ru.zont.dsbot.core.GuildContext;
-
 public class DescribedException extends RuntimeException {
     public static final int ERROR_COLOR = 0xB31C1C;
-    private final String description;
-    private final String picture;
-    private final int color;
+    private String description;
+    private String picture;
+    private int color;
 
     public DescribedException(String message) {
         this(message, null, null, ERROR_COLOR);
@@ -62,5 +58,17 @@ public class DescribedException extends RuntimeException {
 
     public int getColor() {
         return color;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setPicture(String picture) {
+        this.picture = picture;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
     }
 }

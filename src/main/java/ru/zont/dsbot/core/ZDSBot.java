@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -8,20 +9,17 @@ import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.CommandListener;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
-import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.executil.ExecutionManager;
-import ru.zont.dsbot.core.listeners.GuildReadyListener;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
+import ru.zont.dsbot.core.listeners.GuildReadyListener;
 
 import javax.security.auth.login.LoginException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Properties;
+import java.util.*;
 
 public class ZDSBot {
     private static final Logger log = LoggerFactory.getLogger(ZDSBot.class);
@@ -35,7 +33,10 @@ public class ZDSBot {
     private final String botVersion;
     private final String botNameLong;
     private final ErrorReporter errorReporter;
-    private ExecutionManager executionManager;
+
+    private final HashMap<String, CommandAdapter> commandsGlobal;
+    private final ExecutionManager executionManager;
+    private HashSet<String> globalBannedCommands;
 
     public ZDSBot(JDABuilder jdaBuilder,
                   ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
@@ -76,8 +77,24 @@ public class ZDSBot {
             }
         });
 
-        for (Class<? extends CommandAdapter> adapter : commandAdapters)
-            log.info("CommandAdapter {} registered", adapter.getSimpleName());
+        globalBannedCommands = new HashSet<>();
+        commandsGlobal = new HashMap<>();
+        for (Class<? extends CommandAdapter> klass : commandAdapters) {
+            final CommandAdapter instance;
+            try {
+                var constructor = klass.getDeclaredConstructor(ZDSBot.class, GuildContext.class);
+                instance = constructor.newInstance(this, null);
+                if (!instance.allowGlobal()) {
+                    globalBannedCommands.add(instance.getName());
+                    globalBannedCommands.addAll(instance.getAliases());
+                    continue;
+                }
+                log.info(formatLog(null, "Command instantiated: %s", instance.getClass().getName()));
+                commandsGlobal.put(instance.getName(), instance);
+            } catch (Exception e) {
+                throw new RuntimeException("Cannot instantiate Command " + klass.getName(), e);
+            }
+        }
 
         jdaBuilder.addEventListeners(new GuildReadyListener(this));
         jda = jdaBuilder.build();
@@ -95,6 +112,11 @@ public class ZDSBot {
             log.error("Cannot load version config", e);
         }
         return properties.getProperty("version", "UNKNOWN");
+    }
+
+    public static String formatLog(GuildContext context, String str, Object... args) {
+        return context != null ? context.formatLog(str, args)
+                : String.join(" ", "[GLOBAL]", str.formatted(args));
     }
 
     public ArrayList<Class<? extends CommandAdapter>> getCommandAdapters() {
@@ -180,5 +202,24 @@ public class ZDSBot {
 
     public ExecutionManager getExecutionManager() {
         return executionManager;
+    }
+
+    public String getBotName() {
+        return getConfig().getBotName();
+    }
+
+    public EmbedBuilder versionFooter(EmbedBuilder builder) {
+        return builder.setFooter("%s v.%s ZDSB v.%s".formatted(
+                getBotName(),
+                getBotVersion(),
+                getCoreVersion()));
+    }
+
+    public HashMap<String, CommandAdapter> getCommands() {
+        return commandsGlobal;
+    }
+
+    public boolean isGlobalBannedCommand(String commandName) {
+        return globalBannedCommands.contains(commandName);
     }
 }

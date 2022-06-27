@@ -7,7 +7,10 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.*;
+import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
+import ru.zont.dsbot.core.commands.exceptions.NotImplementedException;
 import ru.zont.dsbot.core.executil.ExecutionManager;
 import ru.zont.dsbot.core.util.ResponseTarget;
 
@@ -16,13 +19,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Exec extends CommandAdapter {
+public class Exec extends ExecBase {
     public static final Pattern CODE_BLOCK_LANG_PATTERN = Pattern.compile("```([\\w-]+)\\n((.|\\n)+)```\\W*");
     public static final Pattern CODE_BLOCK_PATTERN = Pattern.compile("```((.|\\n)+)```\\W*");
     private final HashMap<String, Env> envMap = new HashMap<>(){{
@@ -38,14 +40,14 @@ public class Exec extends CommandAdapter {
         put("java", Exec.this::javaEnv);
     }};
 
-    public Exec(GuildContext context) {
-        super(context);
+    public Exec(ZDSBot bot, GuildContext context) {
+        super(bot, context);
     }
 
     @Override
     public void onCall(ResponseTarget replyTo, Input input, MessageReceivedEvent event, Object... params) {
         final CommandLine cl = input.getCommandLine();
-        final String content = input.getUnrecognizedAsIs();
+        final String content = input.getContentUnrecogrized();
 
         final Matcher labeledMatcher = CODE_BLOCK_LANG_PATTERN.matcher(content);
         final Matcher blankMatcher = CODE_BLOCK_PATTERN.matcher(content);

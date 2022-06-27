@@ -6,14 +6,15 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
 import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.Strings;
 
 public class Ping extends CommandAdapter {
-    public Ping(GuildContext context) {
-        super(context);
+    public Ping(ZDSBot bot, GuildContext context) {
+        super(bot, context);
     }
 
     @Override

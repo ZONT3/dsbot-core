@@ -2,7 +2,6 @@ package ru.zont.dsbot.core.commands;
 
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class Routing {

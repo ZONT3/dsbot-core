@@ -3,21 +3,22 @@ package ru.zont.dsbot.core.commands.impl.execution;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.cli.Options;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
-import ru.zont.dsbot.core.commands.InvalidSyntaxException;
-import ru.zont.dsbot.core.commands.NotImplementedException;
+import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
+import ru.zont.dsbot.core.commands.exceptions.NotImplementedException;
 import ru.zont.dsbot.core.executil.ExecutionManager;
 import ru.zont.dsbot.core.util.ResponseTarget;
 
 import java.io.File;
 import java.util.List;
 
-public class Do extends CommandAdapter {
+public class Do extends ExecBase {
     private static final List<String> supportedFormats = List.of("py", "bat", "cmd");
 
-    public Do(GuildContext context) {
-        super(context);
+    public Do(ZDSBot bot, GuildContext context) {
+        super(bot, context);
     }
 
     @Override

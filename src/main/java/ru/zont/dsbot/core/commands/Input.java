@@ -6,6 +6,12 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
+import ru.zont.dsbot.core.commands.exceptions.CommandNotFoundException;
+import ru.zont.dsbot.core.commands.exceptions.ForeignServerException;
+import ru.zont.dsbot.core.commands.exceptions.InsufficientPermissionsException;
+import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
+import ru.zont.dsbot.core.util.Strings;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,7 +34,7 @@ public class Input {
         this.contentStripped = content.replaceFirst(Pattern.quote(comName) + "\s*", "");
     }
 
-    public String getContent() {
+    public String getContentFull() {
         return content;
     }
 
@@ -36,7 +42,7 @@ public class Input {
         return comName;
     }
 
-    public String getContentStripped() {
+    public String getContent() {
         return contentStripped;
     }
 
@@ -44,7 +50,7 @@ public class Input {
         return commandLine;
     }
 
-    public String getUnrecognizedAsIs() {
+    public String getContentUnrecogrized() {
         if (commandLine.getArgs().length > 0) {
             final String sep = "[\\s\"']+";
             final Pattern pattern = Pattern.compile(
@@ -56,20 +62,32 @@ public class Input {
     }
 
     public void applyAdapter(GuildContext context, CommandAdapter adapter) {
-        String[] args = ArgumentTokenizer.tokenize(getContentStripped()).toArray(String[]::new);
+        String[] args = ArgumentTokenizer.tokenize(getContent()).toArray(String[]::new);
 
         try {
             commandLine = defaultParser.parse(adapter.getOptions(), args, adapter.doStopAtNonOption());
         } catch (ParseException e) {
             if (adapter.doStopAtNonOption())
-                log.error(context.formatLog("ParseException on parsing %s", adapter.getName()), e);
+                log.error(ZDSBot.formatLog(context, "ParseException on parsing %s", adapter.getName()), e);
             else throw new InvalidSyntaxException(null, adapter);
         }
     }
 
-    public CommandAdapter findAndApplyAdapter(GuildContext context) {
-        CommandAdapter adapter = CommandAdapter.findAdapter(context, getComName(), getContent());
-        if (adapter == null) throw new CommandNotFoundException();
+    public CommandAdapter findAndApplyAdapter(ZDSBot bot, GuildContext context) {
+        CommandAdapter adapter = CommandAdapter.findAdapter(bot, context, getComName(), getContentFull());
+        if (adapter == null) {
+            if (context != null) {
+                if (context.isForeign() && context.isForeignBannedCommand(getComName()))
+                    throw new ForeignServerException();
+                else if (context.isGuildBannedCommand(getComName())) {
+                    throw new InsufficientPermissionsException(Strings.CORE.get("err.guilds_banned"));
+                }
+            } else {
+                if (bot.isGlobalBannedCommand(getComName()))
+                    throw new InsufficientPermissionsException(Strings.CORE.get("err.global_banned"));
+            }
+            throw new CommandNotFoundException();
+        }
         applyAdapter(context, adapter);
         return adapter;
     }

@@ -155,7 +155,7 @@ public class ErrorReporter {
         EmbedBuilder builder = new EmbedBuilder()
                 .setColor(color)
                 .setTitle(title)
-                .setImage(picture);
+                .setThumbnail(picture);
 
         StringBuilder content = new StringBuilder(description != null ? description : "");
         if (displayCause) {

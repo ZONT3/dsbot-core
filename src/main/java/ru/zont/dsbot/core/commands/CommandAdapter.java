@@ -10,6 +10,7 @@ import org.apache.commons.io.output.StringBuilderWriter;
 import org.jetbrains.annotations.Nullable;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
+import ru.zont.dsbot.core.commands.exceptions.BotWritePermissionException;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.util.DescribedException;
@@ -27,13 +28,17 @@ public abstract class CommandAdapter {
     public static final String EMOJI_OK = "\u2705";
     public static final String EMOJI_WAIT = "\u23F3";
     public static final String EMOJI_ERROR = "U+1F6D1";
+
+    private final ZDSBot bot;
     private final GuildContext context;
+
     private final HelpFormatter helpFormatter = new HelpFormatter() {{
         setSyntaxPrefix("");
         setWidth(Strings.DS_CODE_BLOCK_LINE_LENGTH);
     }};
 
-    public CommandAdapter(GuildContext context) {
+    public CommandAdapter(ZDSBot bot, GuildContext context) {
+        this.bot = bot;
         this.context = context;
     }
 
@@ -45,6 +50,10 @@ public abstract class CommandAdapter {
 
     public String getDescription() {
         return "";
+    }
+
+    public boolean checkPermission(MessageReceivedEvent event) {
+        return true;
     }
 
     public boolean isWriteableChannelRequired() {
@@ -125,13 +134,25 @@ public abstract class CommandAdapter {
         return false;
     }
 
+    public boolean allowForeignGuilds() {
+        return true;
+    }
+
+    public boolean allowGlobal() {
+        return true;
+    }
+
+    public boolean allowGuilds() {
+        return true;
+    }
+
     public boolean dontCallByName() {
         return false;
     }
 
     @Nullable
-    public static CommandAdapter findAdapter(GuildContext context, String comName, String content) {
-        HashMap<String, CommandAdapter> adapters = context.getCommands();
+    public static CommandAdapter findAdapter(ZDSBot bot, GuildContext context, String comName, String content) {
+        HashMap<String, CommandAdapter> adapters = context != null ? context.getCommands() : bot.getCommands();
         CommandAdapter adapter = adapters.getOrDefault(comName, null);
         if (adapter == null || adapter.dontCallByName()) {
             final List<CommandAdapter> found = adapters.values()
@@ -148,24 +169,29 @@ public abstract class CommandAdapter {
         return adapter;
     }
 
+    @Nullable
     public final GuildContext getContext() {
         return context;
     }
 
     public final ZDSBot getBot() {
-        return context.getBot();
+        return bot;
     }
 
     public final <T extends ZDSBBasicConfig> T getConfig() {
-        return getContext().getConfig();
+        return getContext() != null ? getContext().getConfig() : getGlobalConfig();
     }
 
     public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
-        return getContext().getGlobalConfig();
+        return getBot().getGlobalConfig();
     }
 
     public final <T extends ZDSBBotConfig> T getBotConfig() {
         return getBot().getConfig();
+    }
+
+    public final PermissionsUtil getPermissionsUtil(MessageReceivedEvent event) {
+        return new PermissionsUtil(getBot(), getContext(), event);
     }
 
     public final String getPrefix() {
@@ -238,7 +264,7 @@ public abstract class CommandAdapter {
      */
     protected final void call(String content, Object... params) {
         final Input input = new Input(content);
-        CommandAdapter adapter = input.findAndApplyAdapter(getContext());
+        CommandAdapter adapter = input.findAndApplyAdapter(getBot(), getContext());
         ResponseTarget responseTarget;
         try {
             responseTarget = getResponseTarget(null, params);
@@ -249,7 +275,7 @@ public abstract class CommandAdapter {
     }
 
     protected final ResponseTarget getResponseTarget(MessageReceivedEvent event, Object[] params) {
-        if (event != null) return getContext().getResponseTarget(event);
+        if (event != null) return getResponseTarget(event);
         if (params.length >= 1) {
             if (params[0] instanceof final ResponseTarget target)
                 return target;
@@ -258,7 +284,7 @@ public abstract class CommandAdapter {
             if (params[0] instanceof final Message message)
                 return ResponseTarget.message(message);
             if (params[0] instanceof final MessageReceivedEvent e)
-                return getContext().getResponseTarget(e);
+                return getResponseTarget(e);
             if (params[0] instanceof final GenericEvent e) {
                 Message message = null;
                 try {
@@ -282,6 +308,18 @@ public abstract class CommandAdapter {
         throw new IllegalStateException("Channel not provided by external call");
     }
 
+    public final ResponseTarget getResponseTarget(MessageReceivedEvent event) {
+        return getResponseTarget(getConfig(), event);
+    }
+
+    public static ResponseTarget getResponseTarget(ZDSBBasicConfig config, MessageReceivedEvent event) {
+        if (config.doReplyToMessages()) {
+            return new ResponseTarget(event.getMessage());
+        } else {
+            return new ResponseTarget(event.getChannel());
+        }
+    }
+
     public static void requireWritableChannel(ResponseTarget toCheck) {
         final boolean valid = ResponseTarget.isValid(toCheck);
         if (valid && !toCheck.getChannel().canTalk())
@@ -289,8 +327,8 @@ public abstract class CommandAdapter {
         else if (!valid)
             throw new IllegalStateException("ResponseTarget must be valid for this command.");
     }
-
     public static class AmbiguousCallException extends DescribedException {
+
         public AmbiguousCallException(List<CommandAdapter> found) {
             super(Strings.CORE.get("err.ambiguous"), generateDescription(found));
         }

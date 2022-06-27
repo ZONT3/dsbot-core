@@ -5,14 +5,12 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import ru.zont.dsbot.core.GuildContext;
+import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
 import ru.zont.dsbot.core.util.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Help extends CommandAdapter {
 
@@ -21,8 +19,8 @@ public class Help extends CommandAdapter {
     public static final int HELP_COLOR = 0x1010A0;
     public static final Strings STR = Strings.CORE;
 
-    public Help(GuildContext context) {
-        super(context);
+    public Help(ZDSBot bot, GuildContext context) {
+        super(bot, context);
     }
 
     @Override
@@ -31,7 +29,7 @@ public class Help extends CommandAdapter {
         List<String> argList = cl.getArgList();
 
         if (argList.size() == 1) {
-            CommandAdapter adapter = findAdapter(getContext(), argList.get(0), argList.get(0));
+            CommandAdapter adapter = findAdapter(getBot(), getContext(), argList.get(0), argList.get(0));
             if (adapter == null)
                 throw new DescribedException(
                         STR.get("err.unknown_command"),
@@ -43,7 +41,7 @@ public class Help extends CommandAdapter {
             LinkedList<String> badNames = new LinkedList<>();
             LinkedList<CommandAdapter> commands = new LinkedList<>();
             for (String s : argList) {
-                CommandAdapter adapter = findAdapter(getContext(), s, s);
+                CommandAdapter adapter = findAdapter(getBot(), getContext(), s, s);
                 if (adapter == null)
                     badNames.add(s);
                 else commands.add(adapter);
@@ -63,15 +61,20 @@ public class Help extends CommandAdapter {
             helpAll(event, cl, commands, prefix);
 
         } else {
-            helpAll(event, cl, getContext().getCommands().values(), null);
+            helpAll(event, cl, getCommands().values(), null);
         }
+    }
+
+    private HashMap<String, CommandAdapter> getCommands() {
+        return getContext() != null ? getContext().getCommands() : getBot().getCommands();
     }
 
     private void help(CommandAdapter adapter, MessageReceivedEvent event) {
         EmbedBuilder builder = new EmbedBuilder()
                 .setTitle(adapter.getName())
                 .setColor(HELP_COLOR);
-        MessageBatch.sendNow(getContext().getResponseTarget(event)
+        getBot().versionFooter(builder);
+        MessageBatch.sendNow(CommandAdapter.getResponseTarget(getConfig(), event)
                 .responseEmbed(MessageSplitter.embeds(adapter.getHelp(), builder)));
     }
 
@@ -90,7 +93,8 @@ public class Help extends CommandAdapter {
         EmbedBuilder builder = new EmbedBuilder()
                 .setTitle(STR.get("comms.help.list.title"))
                 .setColor(HELP_COLOR);
-        MessageBatch.sendNow(getContext().getResponseTarget(event)
+        getBot().versionFooter(builder);
+        MessageBatch.sendNow(CommandAdapter.getResponseTarget(getConfig(), event)
                 .responseEmbed(MessageSplitter.embeds(content, builder)));
     }
 

@@ -1,11 +1,12 @@
 package ru.zont.dsbot.core.listeners;
 
+import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jetbrains.annotations.Nullable;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
@@ -16,16 +17,24 @@ import java.util.Arrays;
 
 public abstract class GuildListenerAdapter implements EventListener {
     private final GuildContext context;
+    private final ZDSBot bot;
 
-    public GuildListenerAdapter(GuildContext context) {
+    public GuildListenerAdapter(ZDSBot bot, GuildContext context) {
         this.context = context;
+        this.bot = bot;
     }
 
     @Override
     public final void onEvent(@NotNull GenericEvent event) {
         final Class<? extends @NotNull GenericEvent> clazz = event.getClass();
-        if (Arrays.stream(clazz.getMethods()).noneMatch(m -> "getGuild".equals(m.getName())))
+        if (getContext() != null && Arrays.stream(clazz.getMethods()).noneMatch(m -> "getGuild".equals(m.getName())))
             return;
+
+        if (getContext() == null && event instanceof final MessageReceivedEvent e) {
+            if (!e.isFromType(ChannelType.PRIVATE)) return;
+            onEvent(null, e);
+            return;
+        } else if (getContext() == null) return;
 
         try {
             final Object guildObj = clazz.getMethod("getGuild").invoke(event);
@@ -36,22 +45,23 @@ public abstract class GuildListenerAdapter implements EventListener {
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) { } // Not a guild containing event
     }
 
-    public abstract void onEvent(@NotNull Guild guild, @NotNull GenericEvent event);
+    public abstract void onEvent(Guild guild, GenericEvent event);
 
+    @Nullable
     public final GuildContext getContext() {
         return context;
     }
 
     public final ZDSBot getBot() {
-        return context.getBot();
+        return bot;
     }
 
     public final <T extends ZDSBBasicConfig> T getConfig() {
-        return getContext().getConfig();
+        return getContext() != null ? getContext().getConfig() : getGlobalConfig();
     }
 
     public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
-        return getContext().getGlobalConfig();
+        return getBot().getGlobalConfig();
     }
 
     public final <T extends ZDSBBotConfig> T getBotConfig() {
