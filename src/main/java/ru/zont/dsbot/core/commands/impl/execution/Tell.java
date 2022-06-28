@@ -3,7 +3,6 @@ package ru.zont.dsbot.core.commands.impl.execution;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
 import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
 import ru.zont.dsbot.core.executil.ExecutionManager;
@@ -23,17 +22,31 @@ public class Tell extends ExecBase {
         if (args.length < 1)
             throw InvalidSyntaxException.argument(1, "PID must be provided", this);
 
-        String pidStr = args[0];
-        if (!pidStr.matches("\\d+"))
-            throw InvalidSyntaxException.argument(1, "PID must be an integer", this);
-
+        final String pidStr = args[0];
         final ExecutionManager manager = getBot().getExecutionManager();
-        final PrintWriter stdin = manager.getStdin(Integer.parseInt(pidStr));
-        if (stdin == null)
-            throw InvalidSyntaxException.argument(1, "Process with such PID has not found. Probably already" +
-                    " dead or you are using 'system' PID, but should use 'internal' instead", this);
 
-        final String content = input.getContent().replaceFirst("\\d+\\s", "");
+        final PrintWriter stdin;
+        final String content;
+        final int pid;
+        if (!pidStr.matches("\\d+")) {
+            pid = manager.getLastOutputId(replyTo.getChannel().getId());
+            if (pid > 0) stdin = manager.getStdin(pid);
+            else stdin = null;
+
+            if (stdin == null || stdin.checkError())
+                throw InvalidSyntaxException.argument(1, "PID must be an integer, or any alive process must be in this channel", this);
+
+            content = input.getContent();
+        } else {
+            content = input.getContent().replaceFirst("\\d+\\s", "");
+            pid = Integer.parseInt(pidStr);
+            stdin = manager.getStdin(pid);
+        }
+
+        if (stdin == null || stdin.checkError()) {
+            throw InvalidSyntaxException.argument(1, "Process with such PID (%s) has not found. Probably already dead or you are using 'system' PID, but should use 'internal' instead".formatted(pid), this);
+        }
+
         stdin.println(content);
     }
 

@@ -13,6 +13,7 @@ import java.io.PrintWriter;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -31,12 +32,20 @@ public class ExecutionManager {
     private final ArrayList<StreamPrinter> stderrList = new ArrayList<>();
     private final ArrayList<PrintWriter> stdinList = new ArrayList<>();
     private final HashSet<Integer> terminated = new HashSet<>();
+    private final HashMap<String, Integer> channelMap;
 
     public ExecutionManager(ZDSBot bot) {
         this.bot = bot;
+        channelMap = new HashMap<>();
     }
 
-    public int newProcess(String[] args, String name, MessageChannel output, Consumer<Integer> onExit, boolean verbose, boolean autoFlush) {
+    public int newProcess(String[] args,
+                          String name,
+                          MessageChannel output,
+                          Consumer<Integer> onExit,
+                          boolean verbose,
+                          boolean autoFlush,
+                          boolean windowed) {
         if (name == null) name = args[0];
         final String finalName = name;
         try {
@@ -44,34 +53,11 @@ public class ExecutionManager {
             processes.add(process);
             final int pid = processes.size();
 
+            stdinList.add(new PrintWriter(process.getOutputStream(), autoFlush));
+
             if (output != null) {
-                final StreamPrinter stdout =
-                        new StreamPrinter("[%d] %s stdout".formatted(pid, name), output, process.getInputStream());
-                final StreamPrinter stderr =
-                        new StreamPrinter("[%d] %s stderr".formatted(pid, name), output, process.getErrorStream());
-                stdinList.add(new PrintWriter(process.getOutputStream(), autoFlush));
-                stdoutList.add(stdout);
-                stderrList.add(stderr);
-                stderr.setColor(STDERR_COLOR);
-                stdout.startPrinter();
-                stderr.startPrinter();
-
-                if (verbose) verboseStart(output, pid, name, args, process);
-                final long startTimestamp = System.currentTimeMillis();
-
-                process.onExit().thenAccept(p -> {
-                    final int exitCode = p.exitValue();
-                    stdout.setColor(exitCode == 0 ? COMPLETE_COLOR : ERROR_COLOR);
-                    stderr.setColor(exitCode == 0 ? COMPLETE_COLOR_STDERR : ERROR_COLOR_STDERR);
-
-                    if (verbose || exitCode != 0)
-                        verboseEnd(output, pid, finalName, exitCode, System.currentTimeMillis() - startTimestamp);
-
-                    processes.set(pid - 1, null);
-
-                    if (onExit != null)
-                        onExit.accept(exitCode);
-                });
+                setupPrinters(args, name, output, onExit, verbose, finalName, process, pid, windowed);
+                channelMap.put(output.getId(), pid);
             }
 
             return pid;
@@ -81,6 +67,43 @@ public class ExecutionManager {
                     DescribedException.ERROR_COLOR, e, true, false);
         }
         return -1;
+    }
+
+    private void setupPrinters(String[] args,
+                               String name,
+                               MessageChannel output,
+                               Consumer<Integer> onExit,
+                               boolean verbose,
+                               String finalName,
+                               Process process,
+                               int pid,
+                               boolean windowed) {
+        final StreamPrinter stdout =
+                new StreamPrinter("[%d] %s stdout".formatted(pid, name), output, process.getInputStream(), windowed);
+        final StreamPrinter stderr =
+                new StreamPrinter("[%d] %s stderr".formatted(pid, name), output, process.getErrorStream(), false);
+        stdoutList.add(stdout);
+        stderrList.add(stderr);
+        stderr.setColor(STDERR_COLOR);
+        stdout.startPrinter();
+        stderr.startPrinter();
+
+        if (verbose) verboseStart(output, pid, name, args, process);
+        final long startTimestamp = System.currentTimeMillis();
+
+        process.onExit().thenAccept(p -> {
+            final int exitCode = p.exitValue();
+            stdout.setColor(exitCode == 0 ? COMPLETE_COLOR : ERROR_COLOR);
+            stderr.setColor(exitCode == 0 ? COMPLETE_COLOR_STDERR : ERROR_COLOR_STDERR);
+
+            if (verbose || exitCode != 0)
+                verboseEnd(output, pid, finalName, exitCode, System.currentTimeMillis() - startTimestamp);
+
+            processes.set(pid - 1, null);
+
+            if (onExit != null)
+                onExit.accept(exitCode);
+        });
     }
 
     private void verboseStart(MessageChannel channel, int pid, String name, String[] args, Process process) {
@@ -160,5 +183,9 @@ public class ExecutionManager {
         if ((id - 1) < stderrList.size())
             return stderrList.get(id - 1);
         return null;
+    }
+
+    public int getLastOutputId(String id) {
+        return channelMap.getOrDefault(id, -1);
     }
 }

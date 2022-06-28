@@ -79,7 +79,7 @@ public class GuildContext {
      * (instantly after constructor {@link GuildContext}, or on reconnect)
      */
     public void update(Guild guild, boolean created) {
-        log.info("GuildContext [{}] {}", guild.getName(), created ? "created" : "updated");
+        log.info("GuildContext [{}] {}", getGuildNameNormalized(), created ? "created" : "updated");
     }
 
     public ZDSBot getBot() {

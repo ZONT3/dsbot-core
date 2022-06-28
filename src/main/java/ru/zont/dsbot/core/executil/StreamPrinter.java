@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import ru.zont.dsbot.core.util.MessageBatch;
 import ru.zont.dsbot.core.util.MessageSplitter;
 import ru.zont.dsbot.core.util.ResponseTarget;
+import ru.zont.dsbot.core.util.Strings;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,8 +18,11 @@ import java.util.function.Supplier;
 
 public class StreamPrinter {
     public static final int OUTPUT_UPDATE_PERIOD = 2000;
+    public static final int DEFAULT_WINDOW_SIZE = 20;
     private final MessageChannel channel;
     private final InputStream stream;
+    private final boolean windowed;
+    private int windowSize = DEFAULT_WINDOW_SIZE;
 
     private final Thread updaterThread;
     private final Thread mainThread;
@@ -33,9 +37,10 @@ public class StreamPrinter {
     private int color = -1;
     private int currIndex = 0;
 
-    public StreamPrinter(String name, MessageChannel channel, InputStream stream) {
+    public StreamPrinter(String name, MessageChannel channel, InputStream stream, boolean windowed) {
         this.channel = channel;
         this.stream = stream;
+        this.windowed = windowed;
         outSheet = new StringBuilder();
 
         mainThread = new Thread(this::mainThreadRun, "StramPrinter:main(%s)".formatted(name));
@@ -126,7 +131,12 @@ public class StreamPrinter {
 
         List<MessageEmbed> embeds;
         if (!outSheet.isEmpty()) {
-            final String content = String.join("\n", "```", outSheet.toString(), "```");
+            String contentRaw = outSheet.toString();
+            if (windowed) {
+                final int substringIndex = getSubstringIndex(contentRaw);
+                if (substringIndex > 0) contentRaw = contentRaw.substring(substringIndex);
+            }
+            final String content = String.join("\n", "```", contentRaw, "```");
 
             EmbedBuilder template = new EmbedBuilder(templateGetter.get());
             if (color >= 0) template.setColor(color);
@@ -141,6 +151,22 @@ public class StreamPrinter {
             messages = MessageBatch.sendNow(ResponseTarget.channel(channel).responseEmbed(embeds));
         else if (messages != null) messages.updateEmbeds(embeds, channel);
         invalidated = false;
+    }
+
+    private int getSubstringIndex(String content) {
+        int last = 0;
+        int currSeq = 0;
+        int currSize = 0;
+        for (int i = content.length() - 2; i >= 0; i--) {
+            if (content.charAt(i) == '\n' || currSeq >= Strings.DS_CODE_BLOCK_LINE_LENGTH) {
+                last = i + 1;
+                currSeq = 0;
+                currSize++;
+                if (currSize >= windowSize)
+                    break;
+            } else currSeq++;
+        }
+        return last;
     }
 
     public void setEmbedTemplate(MessageEmbed embedTemplate) {
@@ -158,5 +184,9 @@ public class StreamPrinter {
     public void setColor(int color) {
         this.color = color;
         updateOutput();
+    }
+
+    public void setWindowSize(int windowSize) {
+        this.windowSize = windowSize;
     }
 }

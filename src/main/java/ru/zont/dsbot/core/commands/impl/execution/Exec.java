@@ -73,20 +73,11 @@ public class Exec extends ExecBase {
             callEnv(cl, env, code, replyTo.getChannel(), event);
 
         } else {
-            getBot().getExecutionManager().newProcess(
-                    ArgumentTokenizer.tokenize(content).toArray(String[]::new),
-                    null, replyTo.getChannel(), (i) -> addResult(i == 0, event), !cl.hasOption('s'), true);
+            newProcess(getBot().getExecutionManager(), ArgumentTokenizer.tokenize(content).toArray(String[]::new), null, replyTo.getChannel(), event, cl);
         }
 
         if (cl.hasOption('s') && event != null)
             event.getMessage().delete().queue();
-    }
-
-    private void invalidSyntax() {
-        throw new InvalidSyntaxException("""
-                Code should be encapsulated in MD code block:
-                ```py
-                print('Hello world!')```""");
     }
 
     private void callEnv(CommandLine cl, String env, String code, MessageChannel channel, MessageReceivedEvent event) {
@@ -94,9 +85,15 @@ public class Exec extends ExecBase {
             throw InvalidSyntaxException.argument(1, "Unknown env: %s".formatted(env), null);
         final String[] args = envMap.get(env).call(code, channel, cl);
         final ExecutionManager manager = getBot().getExecutionManager();
-        manager.newProcess(
-                args, env + " code", channel, (i) -> addResult(i == 0, event),
-                !cl.hasOption('s'), true);
+        newProcess(manager, args, env + " code", channel, event, cl);
+    }
+
+    private void newProcess(ExecutionManager manager, String[] args, String env, MessageChannel channel, MessageReceivedEvent event, CommandLine cl) {
+        final int pid = manager.newProcess(
+                args, env, channel, (i) -> addResult(i == 0, event),
+                !cl.hasOption('s'), !cl.hasOption('a'), cl.hasOption('w') || cl.hasOption('W'));
+        if (cl.hasOption('W'))
+            manager.getStdout(pid).setWindowSize(Integer.parseInt(cl.getOptionValue('W')));
     }
 
     @NotNull
@@ -162,7 +159,11 @@ public class Exec extends ExecBase {
                 .addOption("a", "auto-flush-off", false,
                         "Don't use auto-flush for `tell` command")
                 .addOption("e", "echo", false,
-                        "Do not put \"@echo off\" at start of bat (cmd) file");
+                        "Do not put \"@echo off\" at start of bat (cmd) file")
+                .addOption("w", "window", false,
+                        "Trim output to fit one window")
+                .addOption("W", "window-size", true,
+                        "Trim output to fit one window, with specified number of lines");
     }
 
     @Override

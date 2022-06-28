@@ -4,4 +4,4 @@ while True:
     s = input('> ')
     if s == 'q':
         break
-    print('< Иди нахуй, сам ты', s)
+    print(f'< Иди нахуй, сам ты \'{s}\'')

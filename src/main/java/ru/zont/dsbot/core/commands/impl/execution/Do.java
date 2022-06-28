@@ -4,7 +4,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.cli.Options;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
 import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
 import ru.zont.dsbot.core.commands.exceptions.NotImplementedException;
@@ -50,8 +49,12 @@ public class Do extends ExecBase {
                 case "py" -> {
                     final List<String> pArgs = List.of(getBotConfig().pythonPath.getValue(),
                             "-X", "utf8", "-u", scriptFile.getPath());
-                    manager.newProcess(pArgs.toArray(String[]::new), script,
-                            replyTo.getChannel(), (i) -> addResult(i == 0, event), input.getCommandLine().hasOption('v'), true);
+                    final boolean verbose = input.getCommandLine().hasOption('v');
+                    manager.newProcess(pArgs.toArray(String[]::new),
+                            script,
+                            replyTo.getChannel(),
+                            (i) -> addResult(i == 0, event),
+                            verbose, true, !verbose);
                 }
                 case "cmd", "bat" -> throw new NotImplementedException("Windows CMD execution");
                 default -> throw new InvalidSyntaxException("Unknown script format", this);
