@@ -46,7 +46,7 @@ public class Strings {
         float secFloat = sec + duration.toMillisPart() / 1000f;
         int min = duration.toMinutesPart();
         int hr = duration.toHoursPart();
-        int day = duration.toHoursPart();
+        int day = (int) duration.toDaysPart();
         int wk = (int) (duration.toDays() / 7);
 
         final List<String> strings;
