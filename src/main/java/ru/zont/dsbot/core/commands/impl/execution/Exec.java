@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -83,9 +84,8 @@ public class Exec extends ExecBase {
     private void callEnv(CommandLine cl, String env, String code, MessageChannel channel, MessageReceivedEvent event) {
         if (!envMap.containsKey(env))
             throw InvalidSyntaxException.argument(1, "Unknown env: %s".formatted(env), null);
-        final String[] args = envMap.get(env).call(code, channel, cl);
         final ExecutionManager manager = getBot().getExecutionManager();
-        newProcess(manager, args, env + " code", channel, event, cl);
+        envMap.get(env).call(code, channel, event, cl, manager);
     }
 
     private void newProcess(ExecutionManager manager, String[] args, String env, MessageChannel channel, MessageReceivedEvent event, CommandLine cl) {
@@ -97,12 +97,12 @@ public class Exec extends ExecBase {
     }
 
     @NotNull
-    private Path toTempFile(String code, String extension, String filePrefix) {
+    private Path toTempFile(String code, String extension, List<String> filePrefix) {
         final Path pythonCode;
         try {
             pythonCode = Files.createTempFile("code", extension);
             FileUtils.write(pythonCode.toFile(),
-                    filePrefix != null ? String.join("\n\n", filePrefix, code) : code,
+                    filePrefix != null ? String.join("\n\n", String.join("\n", filePrefix), code) : code,
                     StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -110,39 +110,65 @@ public class Exec extends ExecBase {
         return pythonCode;
     }
 
-    public String[] pythonEnv(String code, MessageChannel channel, CommandLine cl) {
-        final Path pythonCode = toTempFile(code, ".py", "# -*- coding: UTF-8 -*-");
+    public void pythonEnv(String code,
+                              MessageChannel channel,
+                              MessageReceivedEvent event,
+                              CommandLine cl,
+                              ExecutionManager manager) {
+        final Path pythonCode = toTempFile(code, ".py", Collections.singletonList("# -*- coding: UTF-8 -*-"));
 
         final List<String> args = new ArrayList<>(List.of(getBotConfig().pythonPath.getValue(), "-X", "utf8"));
         if (!cl.hasOption('b'))
             args.add("-u");
         args.add(pythonCode.normalize().toString());
 
-        return args.toArray(String[]::new);
+        newProcess(manager, args.toArray(String[]::new), "python code", channel, event, cl);
     }
 
-    public String[] cmdEnv(String code, MessageChannel channel, CommandLine cl) {
+    public void cmdEnv(String code,
+                           MessageChannel channel,
+                           MessageReceivedEvent event,
+                           CommandLine cl,
+                           ExecutionManager manager) {
         List<String> prefixes = new ArrayList<>();
         if (!cl.hasOption('e')) prefixes.add("@echo off");
         prefixes.add("chcp 65001");
 
-        final Path path = toTempFile(code, ".bat", String.join("\n", prefixes));
-        return List.of("cmd", "/c", path.normalize().toString()).toArray(String[]::new);
+        final Path path = toTempFile(code, ".bat", prefixes);
+        final String[] args = List.of("cmd", "/c", path.normalize().toString()).toArray(String[]::new);
+
+        newProcess(manager, args, "cmd code", channel, event, cl);
     }
 
-    public String[] shEnv(String code, MessageChannel channel, CommandLine cl) {
+    public void shEnv(String code,
+                          MessageChannel channel,
+                          MessageReceivedEvent event,
+                          CommandLine cl,
+                          ExecutionManager manager) {
         throw new NotImplementedException("Shell scripts execution");
     }
 
-    public String[] powershellEnv(String code, MessageChannel channel, CommandLine cl) {
+    public void powershellEnv(String code,
+                                  MessageChannel channel,
+                                  MessageReceivedEvent event,
+                                  CommandLine cl,
+                                  ExecutionManager manager) {
         throw new NotImplementedException("Windows PowerShell scripts execution");
     }
 
-    public String[] javascriptEnv(String code, MessageChannel channel, CommandLine cl) {
+    public void javascriptEnv(String code,
+                                  MessageChannel channel,
+                                  MessageReceivedEvent event,
+                                  CommandLine cl,
+                                  ExecutionManager manager) {
         throw new NotImplementedException("javascript execution");
     }
 
-    public String[] javaEnv(String code, MessageChannel channel, CommandLine cl) {
+    public void javaEnv(String code,
+                            MessageChannel channel,
+                            MessageReceivedEvent event,
+                            CommandLine cl,
+                            ExecutionManager manager) {
         throw new NotImplementedException("Java code execution");
     }
 
@@ -182,6 +208,6 @@ public class Exec extends ExecBase {
     }
 
     private interface Env {
-        String[] call(String code, MessageChannel channel, CommandLine cl);
+        void call(String code, MessageChannel channel, MessageReceivedEvent event, CommandLine cl, ExecutionManager manager);
     }
 }
