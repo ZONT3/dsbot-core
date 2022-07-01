@@ -66,7 +66,7 @@ public class Help extends CommandAdapter {
     }
 
     private HashMap<String, CommandAdapter> getCommands() {
-        return getContext() != null ? getContext().getCommands() : getBot().getCommands();
+        return getContext() != null ? getContext().getCommands() : getBot().getCommandsGlobal();
     }
 
     private void help(CommandAdapter adapter, MessageReceivedEvent event) {

@@ -13,6 +13,7 @@ import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.Strings;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class CommandListener extends GuildListenerAdapter {
@@ -22,6 +23,11 @@ public class CommandListener extends GuildListenerAdapter {
 
     public CommandListener(ZDSBot bot) {
         super(bot, null);
+    }
+
+    @Override
+    public Set<Class<? extends GenericEvent>> getTypes() {
+        return Set.of(MessageReceivedEvent.class);
     }
 
     @Override

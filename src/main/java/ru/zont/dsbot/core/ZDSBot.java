@@ -35,6 +35,8 @@ public class ZDSBot {
     private final ErrorReporter errorReporter;
 
     private final HashMap<String, CommandAdapter> commandsGlobal;
+    private final ArrayList<GuildListenerAdapter> guildListenersGlobal;
+
     private final ExecutionManager executionManager;
     private HashSet<String> globalBannedCommands;
 
@@ -84,17 +86,39 @@ public class ZDSBot {
             try {
                 var constructor = klass.getDeclaredConstructor(ZDSBot.class, GuildContext.class);
                 instance = constructor.newInstance(this, null);
+
                 if (!instance.allowGlobal()) {
                     globalBannedCommands.add(instance.getName());
                     globalBannedCommands.addAll(instance.getAliases());
                     continue;
                 }
-                log.info(formatLog(null, "Command instantiated: %s", instance.getClass().getName()));
+
+                log.info(formatLog(null, "Command instantiated: %s", klass.getName()));
                 commandsGlobal.put(instance.getName(), instance);
             } catch (Exception e) {
                 throw new RuntimeException("Cannot instantiate Command " + klass.getName(), e);
             }
         }
+
+        guildListenersGlobal = new ArrayList<>(guildListeners.size());
+        for (Class<? extends GuildListenerAdapter> klass : guildListeners) {
+            final GuildListenerAdapter instance;
+            try {
+                var constructor = klass.getDeclaredConstructor(ZDSBot.class, GuildContext.class);
+                instance = constructor.newInstance(this, null);
+
+                final List<String> allowedGuilds = instance.getAllowedGuilds();
+                if (allowedGuilds != GuildListenerAdapter.ALLOW_ALL_GUILDS && !allowedGuilds.contains(null))
+                    continue;
+
+                log.info(formatLog(null, "GuildListener instantiated: %s", klass.getName()));
+                guildListenersGlobal.add(instance);
+            } catch (Exception e) {
+                throw new RuntimeException("Cannot instantiate GuildListener " + klass.getName(), e);
+            }
+        }
+        GuildListenerAdapter.initAllListeners(guildListenersGlobal);
+
 
         jdaBuilder.addEventListeners(new GuildReadyListener(this));
         jda = jdaBuilder.build();
@@ -215,8 +239,12 @@ public class ZDSBot {
                 getCoreVersion()));
     }
 
-    public HashMap<String, CommandAdapter> getCommands() {
+    public HashMap<String, CommandAdapter> getCommandsGlobal() {
         return commandsGlobal;
+    }
+
+    public ArrayList<GuildListenerAdapter> getGuildListenersGlobal() {
+        return guildListenersGlobal;
     }
 
     public boolean isGlobalBannedCommand(String commandName) {

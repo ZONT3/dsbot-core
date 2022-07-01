@@ -7,6 +7,8 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
@@ -14,8 +16,18 @@ import ru.zont.dsbot.core.config.ZDSBBotConfig;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public abstract class GuildListenerAdapter implements EventListener {
+    private static final Logger log = LoggerFactory.getLogger(GuildListenerAdapter.class);
+    public static final List<String> ALLOW_ALL_GUILDS = Collections.emptyList();
+
+    public static final ExecutorService INIT_EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+
     private final GuildContext context;
     private final ZDSBot bot;
 
@@ -24,17 +36,43 @@ public abstract class GuildListenerAdapter implements EventListener {
         this.bot = bot;
     }
 
+    public void init(Guild guild) { }
+
+    public abstract void onEvent(Guild guild, GenericEvent event);
+
+    public Set<Class<? extends GenericEvent>> getTypes() {
+        return null;
+    }
+
+    public List<String> getAllowedGuilds() {
+        return ALLOW_ALL_GUILDS;
+    }
+
+    public boolean doIgnoreEvents() {
+        return false;
+    }
+
     @Override
     public final void onEvent(@NotNull GenericEvent event) {
+        if (doIgnoreEvents()) return;
+
         final Class<? extends @NotNull GenericEvent> clazz = event.getClass();
         if (getContext() != null && Arrays.stream(clazz.getMethods()).noneMatch(m -> "getGuild".equals(m.getName())))
             return;
 
-        if (getContext() == null && event instanceof final MessageReceivedEvent e) {
-            if (!e.isFromType(ChannelType.PRIVATE)) return;
-            onEvent(null, e);
+        final Set<Class<? extends GenericEvent>> types = getTypes();
+        if (types != null && !types.contains(event.getClass()))
+            if (types.stream().noneMatch(e -> e.isInstance(event)))
+                return;
+
+        if (getContext() == null && event instanceof final MessageReceivedEvent e)
+            if (!e.isFromType(ChannelType.PRIVATE))
+                return;
+
+        if (getContext() == null) {
+            onEvent(null, event);
             return;
-        } else if (getContext() == null) return;
+        }
 
         try {
             final Object guildObj = clazz.getMethod("getGuild").invoke(event);
@@ -44,8 +82,6 @@ public abstract class GuildListenerAdapter implements EventListener {
             }
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) { } // Not a guild containing event
     }
-
-    public abstract void onEvent(Guild guild, GenericEvent event);
 
     @Nullable
     public final GuildContext getContext() {
@@ -70,5 +106,23 @@ public abstract class GuildListenerAdapter implements EventListener {
 
     public final String getPrefix() {
         return getConfig().getPrefix();
+    }
+
+    public final String formatLog(String str, Object... args) {
+        return ZDSBot.formatLog(getContext(), str, args);
+    }
+
+    public static void initAllListeners(List<GuildListenerAdapter> list) {
+        for (GuildListenerAdapter listener: list) {
+            final GuildContext context = listener.getContext();
+            INIT_EXECUTOR_SERVICE.submit(() -> {
+                try {
+                    listener.init(context == null ? null : context.getGuild());
+                    log.info(listener.formatLog("GuildListener init done: %s", listener.getClass().getName()));
+                } catch (Exception e) {
+                    log.error(listener.formatLog("Cannot init GuildListener: %s", listener.getClass().getName()), e);
+                }
+            });
+        }
     }
 }

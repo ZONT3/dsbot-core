@@ -152,7 +152,7 @@ public abstract class CommandAdapter {
 
     @Nullable
     public static CommandAdapter findAdapter(ZDSBot bot, GuildContext context, String comName, String content) {
-        HashMap<String, CommandAdapter> adapters = context != null ? context.getCommands() : bot.getCommands();
+        HashMap<String, CommandAdapter> adapters = context != null ? context.getCommands() : bot.getCommandsGlobal();
         CommandAdapter adapter = adapters.getOrDefault(comName, null);
         if (adapter == null || adapter.dontCallByName()) {
             final List<CommandAdapter> found = adapters.values()

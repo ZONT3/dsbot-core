@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.commands.CommandAdapter;
+import ru.zont.dsbot.core.config.ZDSBConfig;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.util.Reflect;
 import ru.zont.dsbot.core.util.Strings;
@@ -13,6 +14,7 @@ import ru.zont.dsbot.core.util.Strings;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 
 public class GuildContext {
     private static final Logger log = LoggerFactory.getLogger(GuildContext.class);
@@ -39,16 +41,19 @@ public class GuildContext {
             final CommandAdapter instance = Reflect.commonsNewInstance(klass,
                     "Cannot instantiate Command " + klass.getName(),
                     bot, this);
+
             if (!instance.allowGuilds()) {
                 guildsBannedCommands.add(instance.getName());
                 guildsBannedCommands.addAll(instance.getAliases());
                 continue;
             }
+
             if (!instance.allowForeignGuilds() && !bot.getConfig().getApprovedGuilds().contains(guildId)) {
                 foreignBannedCommands.add(instance.getName());
                 foreignBannedCommands.addAll(instance.getAliases());
                 continue;
             }
+
             log.info(formatLog( "Command instantiated: %s", instance.getClass().getName()));
             commands.put(instance.getName(), instance);
         }
@@ -57,10 +62,16 @@ public class GuildContext {
             final GuildListenerAdapter instance = Reflect.commonsNewInstance(klass,
                     "Cannot instantiate GuildListener " + klass.getName(),
                     bot, this);
+
+            final List<String> allowedGuilds = instance.getAllowedGuilds();
+            if (allowedGuilds != GuildListenerAdapter.ALLOW_ALL_GUILDS && !allowedGuilds.contains(getGuildId()))
+                continue;
+
             log.info(formatLog( "GuildListener instantiated: %s", instance.getClass().getName()));
             bot.getJda().addEventListener(instance);
             listeners.add(instance);
         }
+        GuildListenerAdapter.initAllListeners(listeners);
 
         errorReporter = new ErrorReporter(this);
     }
@@ -119,13 +130,9 @@ public class GuildContext {
     }
 
     public MessageChannel findLogChannel() {
-        MessageChannel channel = null;
+        MessageChannel channel = findChannel(getConfig().logChannel.getValue());
 
         try {
-            String value = getConfig().logChannel.getValue();
-            if (!value.isEmpty() && value.matches("\\d+") && Long.parseLong(value) > 0)
-                channel = getGuild().getTextChannelById(value);
-
             if (channel == null && !getConfig().doSkipSearchingLogChannel()) {
                 log.info(formatLog("Config channel not found, searching for any suitable..."));
                 channel = getGuild().getSystemChannel();
@@ -142,6 +149,13 @@ public class GuildContext {
         }
 
         return channel;
+    }
+
+    public TextChannel findChannel(String id) {
+        id = id.trim();
+        if (id.isEmpty() || !id.matches("\\d+") || Long.parseLong(id) <= 0)
+            return null;
+        return getGuild().getTextChannelById(id);
     }
 
     public boolean isForeign() {
