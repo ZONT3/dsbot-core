@@ -7,20 +7,21 @@
 - [x] Error reporter
 - [ ] Commands
   - [x] Input (CLI)
-  - [ ] Permission utils
-    - [ ] Foreign servers
+  - [x] Permission utils
+    - [x] Foreign servers
   - [x] Exec
     - [x] Replace scanner with something more reliable to newlines
     - [x] Implement carriage return symbol
 
-### Beta
+### 2.0
 
 - [ ] Services (loops in legacy)
+- [ ] DB utils
+- [ ] Watchers
 - [ ] Routing for functions
 - [ ] Parser and other utils from legacy
 
-### Release
+### 2.1
 
-- [ ] DB utils
 - [ ] Slash-commands
 - [ ] Paged embed
