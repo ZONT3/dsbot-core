@@ -15,13 +15,17 @@
 
 ### 2.0
 
-- [ ] Services (loops in legacy)
+- [x] Services (loops in legacy)
+- [x] Watchers
 - [ ] DB utils
-- [ ] Watchers
 - [ ] Routing for functions
-- [ ] Parser and other utils from legacy
+- [ ] Config command
 
 ### 2.1
+
+- [ ] Parser and other utils from legacy
+
+### 2.2
 
 - [ ] Slash-commands
 - [ ] Paged embed
