@@ -100,5 +100,6 @@ gradle-app.setting
 .classpath
 
 # Project files
-/cfg/
-/log/
+cfg/
+log/
+data/
