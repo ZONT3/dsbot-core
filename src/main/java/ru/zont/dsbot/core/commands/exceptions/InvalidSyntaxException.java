@@ -4,14 +4,16 @@ import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.Strings;
 
+import javax.annotation.Nullable;
+
 public class InvalidSyntaxException extends DescribedException {
-    public static InvalidSyntaxException argument(int i, String desc, CommandAdapter adapter) {
+    public static InvalidSyntaxException argument(int i, @Nullable String desc, CommandAdapter adapter) {
         String header = Strings.CORE.get("err.invalid_arg", i);
         return new InvalidSyntaxException(desc != null
                 ? String.join("\n", header, desc) : header, adapter);
     }
 
-    public static InvalidSyntaxException insufficientArgs(String desc, CommandAdapter adapter) {
+    public static InvalidSyntaxException insufficientArgs(@Nullable String desc, CommandAdapter adapter) {
         String header = Strings.CORE.get("err.insufficient_args");
         return new InvalidSyntaxException(desc != null
                 ? String.join("\n", header, desc) : header, adapter);

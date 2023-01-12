@@ -1,134 +1,59 @@
 package ru.zont.dsbot.core.listeners;
 
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.util.MessageBatch;
-import ru.zont.dsbot.core.util.ResponseTarget;
 
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import javax.annotation.OverridingMethodsMustInvokeSuper;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public abstract class WatcherAdapter extends GuildListenerAdapter {
-    public static final int MAX_MESSAGES = 50;
-    private TextChannel channel = null;
+    private static final Logger log = LoggerFactory.getLogger(WatcherAdapter.class);
+    public static final int DEFAULT_PERIOD = 25;
 
-    private MessageBatch messages;
+    private static int globalIdx = 0;
+
+    @SuppressWarnings("FieldCanBeLocal")
     private Timer timer;
-
     public WatcherAdapter(ZDSBot bot, GuildContext context) {
         super(bot, context);
     }
 
-    public abstract List<MessageEmbed> getMessages();
+    public abstract void update();
 
-    public abstract String getChannelId();
-
-    public abstract String getGuildId();
-
-    private long getPeriod() {
-        return 10_000;
+    public long getPeriod() {
+        return DEFAULT_PERIOD;
     }
 
-    public boolean doClearChannel() {
-        return false;
-    }
-
-    public boolean doSearchExistingMessages() {
-        return true;
-    }
-
+    @OverridingMethodsMustInvokeSuper
     @Override
-    public final void init(Guild guild) {
-        assert getContext() != null;
-        final String channelId = getChannelId();
-        channel = getContext().findChannel(channelId);
-
-        if (channel == null)
-            throw new RuntimeException("Cannot find corresponding channel: %s".formatted(channelId));
-
-        initMessages();
-
-        if (messages == null)
-            throw new RuntimeException("Cannot init messages");
-
+    public boolean init(Guild guild) {
+        globalIdx++;
         final long period = getPeriod();
+        if (period < DEFAULT_PERIOD)
+            log.warn("Too short period ({}s) for watcher {}. " +
+                     "Should be not less than {}, rate limits will be occurred otherwise",
+                    period, getClass().getName(), DEFAULT_PERIOD);
+
         timer = new Timer("%s watcher".formatted(getClass().getSimpleName()), true);
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                updateMessages();
-            }
-        }, period, period);
-    }
-
-    private void updateMessages() {
-        messages.updateEmbeds(getMessages(), getChannel());
-    }
-
-    private void initMessages() {
-        if (doClearChannel()) {
-            try {
-                final List<Message> recv = channel.getIterableHistory().takeAsync(MAX_MESSAGES + 1).get();
-                if (recv.size() > MAX_MESSAGES)
-                    throw new RuntimeException("Too many messages in specified channel. Cannot run watcher with doClearChannel == true in it.");
-                recv.forEach(m -> m.delete().complete());
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        final List<MessageEmbed> newMessages = getMessages();
-        if (doSearchExistingMessages() && !doClearChannel()) {
-            try {
-                final List<Message> messageList = channel.getIterableHistory().takeAsync(MAX_MESSAGES + 1).get();
-                final List<Message> sent = new ArrayList<>(newMessages.size());
-
-                for (MessageEmbed newMessage: newMessages) {
-                    Message curr = null;
-                    for (Message message: messageList) {
-                        final List<MessageEmbed> embeds = message.getEmbeds();
-                        if (embeds.size() == 0) continue;
-                        final MessageEmbed embed = embeds.get(0);
-                        if (embed.getTitle() != null && embed.getTitle().equals(newMessage.getTitle())) {
-                            curr = message;
-                            break;
-                        }
-                    }
-
-                    try {
-                        if (curr != null)
-                            curr = curr.editMessageEmbeds(newMessage).complete();
-                    } catch (Exception ignored) { }
-
-                    if (curr != null) {
-                        sent.add(curr);
-                    } else
-                        sent.add(getChannel().sendMessageEmbeds(newMessage).complete());
+                try {
+                    update();
+                } catch (Exception e) {
+                    getErrorReporter().reportError(null, e);
                 }
-
-                messages = new MessageBatch(sent);
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
             }
-        } else {
-            messages = MessageBatch.sendNow(ResponseTarget.channel(getChannel()).responseEmbed(newMessages));
-        }
+        }, 5000L + 500L * globalIdx, period * 1000L);
+
+        return true;
     }
 
     @Override
     public void onEvent(Guild guild, GenericEvent event) { }
-
-    @Override
-    public final List<String> getAllowedGuilds() {
-        return Collections.singletonList(getGuildId());
-    }
-
-    public final TextChannel getChannel() {
-        return channel;
-    }
 }

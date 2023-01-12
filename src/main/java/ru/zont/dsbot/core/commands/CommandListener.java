@@ -3,8 +3,9 @@ package ru.zont.dsbot.core.commands;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import ru.zont.dsbot.core.ErrorReporter;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.exceptions.InsufficientPermissionsException;
@@ -27,43 +28,78 @@ public class CommandListener extends GuildListenerAdapter {
 
     @Override
     public Set<Class<? extends GenericEvent>> getTypes() {
-        return Set.of(MessageReceivedEvent.class);
+        return Set.of(MessageReceivedEvent.class, SlashCommandInteractionEvent.class,
+                CommandAutoCompleteInteractionEvent.class);
     }
 
     @Override
     public void onEvent(Guild guild, GenericEvent genericEvent) {
-        if (genericEvent instanceof final MessageReceivedEvent event) {
+        if (genericEvent instanceof final SlashCommandInteractionEvent event) {
+            ResponseTarget responseTarget = new ResponseTarget(event);
+            wrapCommand(responseTarget, () -> handleCommandEvent(event, responseTarget));
+        } else if (genericEvent instanceof final MessageReceivedEvent event) {
+            ResponseTarget responseTarget = new ResponseTarget(event, getConfig());
+            wrapCommand(responseTarget, () -> handleMessageEvent(event, responseTarget));
+        } else if (genericEvent instanceof CommandAutoCompleteInteractionEvent event) {
             try {
-                handleEvent(event);
-            } catch (DescribedException e) {
-                getErrorReporter().reportError(CommandAdapter.getResponseTarget(getConfig(), event),
-                        e.getTitle(),
-                        e.getDescription(),
-                        e.getPicture(),
-                        e.getColor(),
-                        e.getCause() == null ? e : e.getCause(),
-                        e.getCause() != null && e != e.getCause(), true);
+                final SlashCommandAdapter adapter = CommandAdapter.findAndCheckSlashAdapter(getBot(), getContext(),
+                        event.getName(), event.getCommandString().substring(1));
+                adapter.onSlashCommandAutoComplete(event);
+            } catch (InsufficientPermissionsException ignored) {
             } catch (Throwable e) {
-                getErrorReporter().reportError(CommandAdapter.getResponseTarget(getConfig(), event),
+                getErrorReporter().reportError(null,
                         Strings.CORE.get("err.unexpected"),
                         Strings.CORE.get("err.unexpected.foot"),
-                        null, 0, e, true, true);
+                        null, 0, e, true, false);
             }
         }
     }
 
-    private ErrorReporter getErrorReporter() {
-        return getContext() != null ? getContext().getErrorReporter() : getBot().getErrorReporter();
+    private void wrapCommand(ResponseTarget reportTo, Runnable handler) {
+        try {
+            handler.run();
+        } catch (DescribedException e) {
+            getErrorReporter().reportError(reportTo,
+                    e.getTitle(),
+                    e.getDescription(),
+                    e.getPicture(),
+                    e.getColor(),
+                    e.getCause() == null ? e : e.getCause(),
+                    e.getCause() != null && e != e.getCause(), true);
+        } catch (Throwable e) {
+            getErrorReporter().reportError(reportTo,
+                    Strings.CORE.get("err.unexpected"),
+                    Strings.CORE.get("err.unexpected.foot"),
+                    null, 0, e, true, true);
+        }
     }
 
-    private void handleEvent(MessageReceivedEvent event) {
+    private void handleCommandEvent(SlashCommandInteractionEvent event, ResponseTarget responseTarget) {
+        if (event.getUser().isBot()) return;
+
+        event.deferReply().complete();
+        final SlashCommandAdapter adapter = CommandAdapter.findAndCheckSlashAdapter(getBot(), getContext(),
+                event.getName(), event.getCommandString().substring(1));
+
+        if (adapter.isWriteableChannelRequired())
+            CommandAdapter.requireWritableChannel(responseTarget);
+
+        if (!adapter.getPermissionsUtil(event).checkOperator() && !adapter.checkPermission(event))
+            throw new InsufficientPermissionsException();
+
+        adapter.onSlashCommand(event);
+    }
+
+    private void handleMessageEvent(MessageReceivedEvent event, ResponseTarget responseTarget) {
+        if (event.isWebhookMessage()) return;
+        if (event.getAuthor().isBot()) return;
+
         final Message message = event.getMessage();
-        final String contentMsg = message.getContentDisplay();
+        final String contentMsg = message.getContentRaw();
         final boolean startsWith = contentMsg.startsWith(getConfig().getPrefix());
         if (!startsWith && getContext() != null)
             return;
 
-        final ResponseTarget responseTarget = CommandAdapter.getResponseTarget(getConfig(), event);
         final Input input = new Input(startsWith ? stripPrefix(contentMsg) : contentMsg);
         final CommandAdapter adapter = input.findAndApplyAdapter(getBot(), getContext());
 

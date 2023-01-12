@@ -1,19 +1,26 @@
 package ru.zont.dsbot.core.config;
 
+import net.dv8tion.jda.api.entities.MessageChannel;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class ZDSBConfig {
     private static final Logger log = LoggerFactory.getLogger(ZDSBConfig.class);
+    public static final List<String> TRUE_VALUES = List.of("true", "yes", "y", "on");
+    public static final List<String> FALSE_VALUES = List.of("false", "no", "f", "n", "off");
 
     private final File configFile;
     private final String configName;
@@ -217,10 +224,38 @@ public class ZDSBConfig {
         processConfigFields();
     }
 
+    public static boolean checkConfigEntries(@Nullable Predicate<String> predicate, Entry... list) {
+        Predicate<String> finalPredicate = predicate != null ? predicate : String::isBlank;
+
+        return Arrays.stream(list).noneMatch(e -> finalPredicate.test(e.getValue()));
+    }
+
+    public boolean checkConfigEntriesStartsWith(String startsWith, @Nullable Predicate<String> predicate) {
+        final Entry[] entries = Arrays.stream(this.getClass().getDeclaredFields())
+                .filter(f ->
+                        f.getType().equals(Entry.class) &&
+                        f.canAccess(this) &&
+                        f.getName().startsWith(startsWith))
+                .map(f -> {
+                    try {
+                        return ((Entry) f.get(this));
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .toArray(Entry[]::new);
+
+        return checkConfigEntries(predicate, entries);
+    }
+
     public class Entry {
         private final String defaultValue;
         private String value;
         private final boolean dontInherit;
+
+        public Entry() {
+            this("", false);
+        }
 
         public Entry(String defaultValue) {
             this(defaultValue, false);
@@ -236,9 +271,18 @@ public class ZDSBConfig {
             return dontInherit;
         }
 
+        @Nonnull
         public String getValue() {
             updateIfNeeded();
             return value;
+        }
+
+        @Nullable
+        public String getString() {
+            String res = getValue();
+            if (res.isBlank())
+                return null;
+            return res;
         }
 
         public String getDefaultValue() {
@@ -246,30 +290,28 @@ public class ZDSBConfig {
         }
 
         public boolean isTrue() {
-            if (getValue() == null) return false;
-            final String value = getValue().strip();
-            return "true".equals(value) ||
-                    "yes".equals(value) ||
-                    "t".equals(value) ||
-                    "y".equals(value) ||
-                    "on".equals(value);
+            final String string = getString();
+            if (string == null) return false;
+            final String value = string.strip();
+            return TRUE_VALUES.contains(value);
         }
 
         public boolean isFalse() {
-            if (getValue() == null) return false;
-            final String value = getValue().strip();
-            return "false".equals(value) ||
-                    "no".equals(value) ||
-                    "f".equals(value) ||
-                    "n".equals(value) ||
-                    "off".equals(value);
+            final String string = getString();
+            if (string == null) return false;
+            final String value = string.strip();
+            return FALSE_VALUES.contains(value);
         }
 
         public int getInt() {
             try {
                 return Integer.parseInt(getValue());
             } catch (Exception e) {
-                return 0;
+                try {
+                    return (int) eval();
+                } catch (Exception e1) {
+                    return 0;
+                }
             }
         }
 
@@ -277,7 +319,11 @@ public class ZDSBConfig {
             try {
                 return Long.parseLong(getValue());
             } catch (Exception e) {
-                return 0L;
+                try {
+                    return (long) eval();
+                } catch (Exception e1) {
+                    return 0L;
+                }
             }
         }
 
@@ -285,7 +331,11 @@ public class ZDSBConfig {
             try {
                 return Float.parseFloat(getValue());
             } catch (Exception e) {
-                return 0f;
+                try {
+                    return (float) eval();
+                } catch (Exception e1) {
+                    return 0f;
+                }
             }
         }
 
@@ -293,7 +343,11 @@ public class ZDSBConfig {
             try {
                 return Double.parseDouble(getValue());
             } catch (Exception e) {
-                return 0.;
+                try {
+                    return eval();
+                } catch (Exception e1) {
+                    return 0.;
+                }
             }
         }
 
@@ -310,10 +364,16 @@ public class ZDSBConfig {
         }
 
         public List<String> toList(String delim) {
-            final String value = getValue();
+            final String value = getString();
             if (value == null)
-                return new LinkedList<>();
+                return Collections.emptyList();
             return List.of(value.split(delim));
+        }
+
+        public void opList(Consumer<List<String>> consumer) {
+            List<String> list = new ArrayList<>(toList());
+            consumer.accept(list);
+            setList(list);
         }
 
         public void setValue(String value) {
@@ -328,6 +388,14 @@ public class ZDSBConfig {
                 }
             }
             throw new RuntimeException("Cannot find this field in ZDSBConfig " + configName);
+        }
+
+        public void setList(List<? extends CharSequence> list) {
+            setValue(String.join(", ", list));
+        }
+
+        public void clearValue() {
+            setValue("");
         }
 
         @Override

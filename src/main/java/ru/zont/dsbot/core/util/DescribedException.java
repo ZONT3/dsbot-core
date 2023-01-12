@@ -45,11 +45,11 @@ public class DescribedException extends RuntimeException {
     }
 
     public String getTitle() {
-        return getMessage();
+        return description != null ? getMessage() : Strings.CORE.get("err");
     }
 
     public String getDescription() {
-        return description;
+        return description != null ? description : getMessage();
     }
 
     public String getPicture() {

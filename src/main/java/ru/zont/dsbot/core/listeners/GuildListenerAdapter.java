@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.zont.dsbot.core.ErrorReporter;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 public abstract class GuildListenerAdapter implements EventListener {
     private static final Logger log = LoggerFactory.getLogger(GuildListenerAdapter.class);
@@ -36,7 +38,9 @@ public abstract class GuildListenerAdapter implements EventListener {
         this.bot = bot;
     }
 
-    public void init(Guild guild) { }
+    public boolean init(Guild guild) {
+        return true;
+    }
 
     public abstract void onEvent(Guild guild, GenericEvent event);
 
@@ -46,6 +50,10 @@ public abstract class GuildListenerAdapter implements EventListener {
 
     public List<String> getAllowedGuilds() {
         return ALLOW_ALL_GUILDS;
+    }
+
+    public boolean allowGlobal() {
+        return false;
     }
 
     public boolean doIgnoreEvents() {
@@ -69,18 +77,23 @@ public abstract class GuildListenerAdapter implements EventListener {
             if (!e.isFromType(ChannelType.PRIVATE))
                 return;
 
-        if (getContext() == null) {
-            onEvent(null, event);
-            return;
-        }
-
         try {
             final Object guildObj = clazz.getMethod("getGuild").invoke(event);
             if (guildObj instanceof final Guild guild) {
-                if (guild.getId().equals(getContext().getGuildId()))
-                    onEvent(guild, event); // Guild object found and this is our GuildContext's guild
+                if (getContext() != null && guild.getId().equals(getContext().getGuildId())) {
+                    // Guild object found and this is our GuildContext's guild
+                    onEvent(guild, event);
+                }
+                return;
             }
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) { } // Not a guild containing event
+
+        if (getContext() == null)
+            onEvent(null, event);
+    }
+
+    public final void onEachGuild(Consumer<GuildContext> action) {
+        getBot().getGuildContexts().forEach(action);
     }
 
     @Nullable
@@ -90,6 +103,12 @@ public abstract class GuildListenerAdapter implements EventListener {
 
     public final ZDSBot getBot() {
         return bot;
+    }
+
+    public final ErrorReporter getErrorReporter() {
+        if (getContext() != null)
+            return getContext().getErrorReporter();
+        return getBot().getErrorReporter();
     }
 
     public final <T extends ZDSBBasicConfig> T getConfig() {
@@ -112,13 +131,16 @@ public abstract class GuildListenerAdapter implements EventListener {
         return ZDSBot.formatLog(getContext(), str, args);
     }
 
-    public static void initAllListeners(List<GuildListenerAdapter> list) {
+    public static void initAllListeners(List<GuildListenerAdapter> list, Consumer<GuildListenerAdapter> onSuccess) {
         for (GuildListenerAdapter listener: list) {
             final GuildContext context = listener.getContext();
             INIT_EXECUTOR_SERVICE.submit(() -> {
                 try {
-                    listener.init(context == null ? null : context.getGuild());
-                    log.info(listener.formatLog("GuildListener init done: %s", listener.getClass().getName()));
+                    if (listener.init(context == null ? null : context.getGuild())) {
+                        log.info(listener.formatLog("GuildListener init done: %s", listener.getClass().getName()));
+                        onSuccess.accept(listener);
+                    } else
+                        log.warn(listener.formatLog("GuildListener init silently failed: %s", listener.getClass().getName()));
                 } catch (Exception e) {
                     log.error(listener.formatLog("Cannot init GuildListener: %s", listener.getClass().getName()), e);
                 }

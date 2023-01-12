@@ -48,7 +48,7 @@ public class Exec extends ExecBase {
     @Override
     public void onCall(ResponseTarget replyTo, Input input, MessageReceivedEvent event, Object... params) {
         final CommandLine cl = input.getCommandLine();
-        final String content = input.getContentUnrecogrized();
+        final String content = input.getContentUnrecognized();
 
         final Matcher labeledMatcher = CODE_BLOCK_LANG_PATTERN.matcher(content);
         final Matcher blankMatcher = CODE_BLOCK_PATTERN.matcher(content);
@@ -70,9 +70,7 @@ public class Exec extends ExecBase {
                 throw new InvalidSyntaxException("Environment / Language must be specified in start of code block, or by -i option");
 
             final String env = cl.getOptionValue('i');
-
             callEnv(cl, env, code, replyTo.getChannel(), event);
-
         } else {
             newProcess(getBot().getExecutionManager(), ArgumentTokenizer.tokenize(content).toArray(String[]::new), null, replyTo.getChannel(), event, cl);
         }
@@ -90,7 +88,7 @@ public class Exec extends ExecBase {
 
     private void newProcess(ExecutionManager manager, String[] args, String env, MessageChannel channel, MessageReceivedEvent event, CommandLine cl) {
         final int pid = manager.newProcess(
-                args, env, channel, (i) -> addResult(i == 0, event),
+                args, env, channel, (i) -> ResponseTarget.addResult(i == 0, event.getMessage()),
                 !cl.hasOption('s'), !cl.hasOption('a'), cl.hasOption('w') || cl.hasOption('W'));
         if (cl.hasOption('W'))
             manager.getStdout(pid).setWindowSize(Integer.parseInt(cl.getOptionValue('W')));

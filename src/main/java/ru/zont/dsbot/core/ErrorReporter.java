@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.*;
 
 import java.io.PrintWriter;
@@ -35,7 +36,7 @@ public class ErrorReporter {
     }
 
     public long reportError(ResponseTarget reportTo, Throwable cause) {
-        return reportError(reportTo, null, null, null,
+        return reportError(reportTo, Strings.CORE.get("err.unexpected"), null, null,
                 DescribedException.ERROR_COLOR, cause, true, false);
     }
 
@@ -128,8 +129,9 @@ public class ErrorReporter {
     private void newReport(ResponseTarget reportTo, String title, String description,
                            String picture, int color, Throwable cause, boolean displayCause, String id,
                            boolean alwaysRepeat) {
-        MessageBatch messages = MessageBatch.sendNow(reportTo.responseEmbed(
-                errorMessage(title, description, picture, color, cause, displayCause)));
+        MessageBatch messages = MessageBatch.sendNow(reportTo.respondEmbeds(
+                errorMessage(title, description, picture, color, cause, displayCause),
+                true));
         if (!alwaysRepeat)
             reports.put(id, new Report(messages, System.currentTimeMillis() / 1000));
 

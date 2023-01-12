@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core.util;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -9,6 +10,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class MessageBatch extends LinkedList<Message> {
     public MessageBatch(Collection<Message> messages) {
@@ -17,6 +19,18 @@ public class MessageBatch extends LinkedList<Message> {
 
     public static MessageBatch sendNow(Deque<MessageAction> actions) {
         return new MessageBatch(actions.stream().map(RestAction::complete).collect(Collectors.toList()));
+    }
+
+    public static MessageBatch sendNowWithMessageSplitter(ResponseTarget replyTo,
+                                                          CharSequence content,
+                                                          EmbedBuilder base) {
+        return sendNow(replyTo.respondEmbeds(MessageSplitter.embeds(content, base)));
+    }
+
+    public static MessageBatch sendNowWithMessageSplitter(MessageChannel channel,
+                                                          CharSequence content,
+                                                          EmbedBuilder base) {
+        return sendNowWithMessageSplitter(ResponseTarget.channel(channel), content, base);
     }
 
     public void updatePresence(MessageChannel channel) {
@@ -35,16 +49,15 @@ public class MessageBatch extends LinkedList<Message> {
         updatePresence(channel);
         int toEdit;
         if (embeds.size() < size()) {
-            for (int i = 0; i < size() - embeds.size(); i++) {
-                Message message = removeLast();
-                message.delete().queue();
-            }
-            toEdit = size();
+            List<Message> messages = IntStream.range(0, size() - embeds.size())
+                    .mapToObj(i -> removeLast())
+                    .toList();
+            channel.purgeMessages(messages);
+            toEdit = embeds.size();
         } else if (embeds.size() > size()) {
-            toEdit = size();
-            for (MessageEmbed embed : embeds.subList(size(), embeds.size())) {
+            for (MessageEmbed embed : embeds.subList(size(), embeds.size()))
                 add(channel.sendMessageEmbeds(embed).complete());
-            }
+            toEdit = size();
         } else toEdit = size();
 
         Iterator<Message> it1 = iterator();

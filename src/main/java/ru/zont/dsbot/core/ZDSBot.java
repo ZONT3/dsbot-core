@@ -3,22 +3,27 @@ package ru.zont.dsbot.core;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.PrivateChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.CommandListener;
+import ru.zont.dsbot.core.commands.SlashCommandAdapter;
+import ru.zont.dsbot.core.commands.impl.execution.ExecBase;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
 import ru.zont.dsbot.core.executil.ExecutionManager;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
 import ru.zont.dsbot.core.listeners.GuildReadyListener;
+import ru.zont.dsbot.core.util.DBConnectionHandler;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.security.auth.login.LoginException;
+import java.sql.SQLException;
 import java.util.*;
 
 public class ZDSBot {
@@ -38,7 +43,10 @@ public class ZDSBot {
     private final ArrayList<GuildListenerAdapter> guildListenersGlobal;
 
     private final ExecutionManager executionManager;
-    private HashSet<String> globalBannedCommands;
+    private final HashSet<String> globalBannedCommands;
+
+    private DBConnectionHandler dbConnectionHandler = null;
+    private final LinkedList<SlashCommandData> globalSlashCommands;
 
     public ZDSBot(JDABuilder jdaBuilder,
                   ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
@@ -59,12 +67,38 @@ public class ZDSBot {
         this.botVersion = botVersion;
         coreVersion = loadCoreVersion();
         contextStore = new HashMap<>();
+        globalSlashCommands = new LinkedList<>();
 
         botNameLong = "%s%s (ZDSBot v.%s)".formatted(
                 configManager.botConfig().getBotName(),
                 botVersion != null ? (" " + botVersion) : "",
                 coreVersion);
 
+        initConfigManager();
+
+        jdaBuilder.addEventListeners(new GuildReadyListener(this));
+        jda = jdaBuilder.build();
+
+        globalBannedCommands = new HashSet<>();
+        commandsGlobal = new HashMap<>();
+        initGlobalCommandAdapters();
+
+        guildListenersGlobal = new ArrayList<>(this.guildListeners.size());
+        initGlobalGuildListeners(guildListeners);
+
+        jda.awaitReady();
+
+        errorReporter = new ErrorReporter(this);
+        executionManager = new ExecutionManager(this);
+
+        if (getMainGuildContext() == null)
+            throw new IllegalStateException("Bot is not invited to the main guild or there are fatal error occurred on setup");
+
+        log.info("Global slash commands: {}", globalSlashCommands.stream().map(CommandData::getName).toList());
+        getJda().updateCommands().addCommands(globalSlashCommands).queue();
+    }
+
+    private void initConfigManager() {
         configManager.setCommentsGetter(configName -> {
             if ("global".equals(configName))
                 return botNameLong + " - Global config";
@@ -78,12 +112,17 @@ public class ZDSBot {
                 } else return botNameLong + " - %s config".formatted(configName);
             }
         });
+    }
 
-        globalBannedCommands = new HashSet<>();
-        commandsGlobal = new HashMap<>();
-        for (Class<? extends CommandAdapter> klass : commandAdapters) {
+    private void initGlobalCommandAdapters() {
+        ZDSBBotConfig cfg = getConfig();
+        List<String> excludedByConfig = cfg.excludedCommands.toList();
+
+        for (Class<? extends CommandAdapter> klass : this.commandAdapters) {
             final CommandAdapter instance;
             try {
+                if (isCommandExcluded(cfg, excludedByConfig, klass)) continue;
+
                 var constructor = klass.getDeclaredConstructor(ZDSBot.class, GuildContext.class);
                 instance = constructor.newInstance(this, null);
 
@@ -93,22 +132,25 @@ public class ZDSBot {
                     continue;
                 }
 
+                if (instance instanceof SlashCommandAdapter sca)
+                    globalSlashCommands.add(sca.getSlashCommand());
+
                 log.info(formatLog(null, "Command instantiated: %s", klass.getName()));
                 commandsGlobal.put(instance.getName(), instance);
             } catch (Exception e) {
                 throw new RuntimeException("Cannot instantiate Command " + klass.getName(), e);
             }
         }
+    }
 
-        guildListenersGlobal = new ArrayList<>(guildListeners.size());
+    private void initGlobalGuildListeners(ArrayList<Class<? extends GuildListenerAdapter>> guildListeners) {
         for (Class<? extends GuildListenerAdapter> klass : guildListeners) {
             final GuildListenerAdapter instance;
             try {
                 var constructor = klass.getDeclaredConstructor(ZDSBot.class, GuildContext.class);
                 instance = constructor.newInstance(this, null);
 
-                final List<String> allowedGuilds = instance.getAllowedGuilds();
-                if (allowedGuilds != GuildListenerAdapter.ALLOW_ALL_GUILDS && !allowedGuilds.contains(null))
+                if (!instance.allowGlobal())
                     continue;
 
                 log.info(formatLog(null, "GuildListener instantiated: %s", klass.getName()));
@@ -117,15 +159,39 @@ public class ZDSBot {
                 throw new RuntimeException("Cannot instantiate GuildListener " + klass.getName(), e);
             }
         }
-        GuildListenerAdapter.initAllListeners(guildListenersGlobal);
+        GuildListenerAdapter.initAllListeners(guildListenersGlobal, getJda()::addEventListener);
+    }
 
+    public static boolean isCommandExcluded(ZDSBBotConfig cfg, List<String> excludedByConfig, Class<? extends CommandAdapter> klass) {
+        if (ExecBase.class.isAssignableFrom(klass) && !cfg.allowExecution.isTrue()) {
+            log.info("Execution command not allowed by config: {}", klass.getName());
+            return true;
+        }
+        if (excludedByConfig.contains(klass.getSimpleName())) {
+            log.info("Command not allowed by config: {}", klass.getName());
+            return true;
+        }
+        return false;
+    }
 
-        jdaBuilder.addEventListeners(new GuildReadyListener(this));
-        jda = jdaBuilder.build();
-        jda.awaitReady();
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public <T extends CommandAdapter> T getGlobalCommandInstance(@Nonnull Class<T> clazz) {
+        return (T) commandsGlobal.values().stream()
+                .filter(l -> l.getClass().equals(clazz))
+                .findAny().orElse(null);
+    }
 
-        errorReporter = new ErrorReporter(this);
-        executionManager = new ExecutionManager(this);
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public <T extends GuildListenerAdapter> T getGlobalListenerInstance(@Nonnull Class<T> clazz) {
+        return (T) guildListenersGlobal.stream()
+                .filter(l -> l.getClass().equals(clazz))
+                .findAny().orElse(null);
+    }
+
+    public GuildContext getMainGuildContext() {
+        return getGuildContext(getConfig().mainGuild.getValue());
     }
 
     public static String loadCoreVersion() {
@@ -203,7 +269,27 @@ public class ZDSBot {
         context.update(guild, notExist);
     }
 
+    public MessageChannel findChannelById(String id) {
+        if (id == null) return null;
+        id = id.trim();
+        if (id.isEmpty() || !id.matches("\\d+") || Long.parseLong(id) <= 0)
+            return null;
+        MessageChannel channel = getJda().getTextChannelById(id);
+        if (channel == null)
+            channel = getJda().getNewsChannelById(id);
+        if (channel == null)
+            channel = getJda().getThreadChannelById(id);
+        return channel;
+    }
+
     public MessageChannel findLogChannel() {
+        String channelId = getGlobalConfig().logChannel.getString();
+        if (channelId != null) {
+            TextChannel channel = getJda().getTextChannelById(channelId);
+            if (channel != null)
+                return channel;
+        }
+
         for (String operator : getConfig().getOperators()) {
             try {
                 User user = getJda().retrieveUserById(operator).complete();
@@ -249,5 +335,13 @@ public class ZDSBot {
 
     public boolean isGlobalBannedCommand(String commandName) {
         return globalBannedCommands.contains(commandName);
+    }
+
+    public void setDbConnection(String conString) throws SQLException {
+        dbConnectionHandler = new DBConnectionHandler(conString);
+    }
+
+    public DBConnectionHandler getDbConnectionHandler() {
+        return dbConnectionHandler;
     }
 }

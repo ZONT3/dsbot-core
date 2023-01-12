@@ -7,11 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.commands.exceptions.CommandNotFoundException;
-import ru.zont.dsbot.core.commands.exceptions.ForeignServerException;
-import ru.zont.dsbot.core.commands.exceptions.InsufficientPermissionsException;
 import ru.zont.dsbot.core.commands.exceptions.InvalidSyntaxException;
-import ru.zont.dsbot.core.util.Strings;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,7 +46,7 @@ public class Input {
         return commandLine;
     }
 
-    public String getContentUnrecogrized() {
+    public String getContentUnrecognized() {
         if (commandLine.getArgs().length > 0) {
             final String sep = "[\\s\"']+";
             final Pattern pattern = Pattern.compile(
@@ -74,21 +70,9 @@ public class Input {
     }
 
     public CommandAdapter findAndApplyAdapter(ZDSBot bot, GuildContext context) {
-        CommandAdapter adapter = CommandAdapter.findAdapter(bot, context, getComName(), getContentFull());
-        if (adapter == null) {
-            if (context != null) {
-                if (context.isForeign() && context.isForeignBannedCommand(getComName()))
-                    throw new ForeignServerException();
-                else if (context.isGuildBannedCommand(getComName())) {
-                    throw new InsufficientPermissionsException(Strings.CORE.get("err.guilds_banned"));
-                }
-            } else {
-                if (bot.isGlobalBannedCommand(getComName()))
-                    throw new InsufficientPermissionsException(Strings.CORE.get("err.global_banned"));
-            }
-            throw new CommandNotFoundException();
-        }
+        CommandAdapter adapter = CommandAdapter.findAndCheckAdapter(bot, context, getComName(), getContentFull(), false);
         applyAdapter(context, adapter);
         return adapter;
     }
+
 }

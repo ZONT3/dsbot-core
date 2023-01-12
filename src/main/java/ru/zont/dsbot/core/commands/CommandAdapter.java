@@ -7,10 +7,14 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.output.StringBuilderWriter;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.exceptions.BotWritePermissionException;
+import ru.zont.dsbot.core.commands.exceptions.CommandNotFoundException;
+import ru.zont.dsbot.core.commands.exceptions.ForeignServerException;
+import ru.zont.dsbot.core.commands.exceptions.InsufficientPermissionsException;
 import ru.zont.dsbot.core.config.ZDSBBasicConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.util.DescribedException;
@@ -25,9 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 
 public abstract class CommandAdapter {
-    public static final String EMOJI_OK = "\u2705";
-    public static final String EMOJI_WAIT = "\u23F3";
-    public static final String EMOJI_ERROR = "U+1F6D1";
 
     private final ZDSBot bot;
     private final GuildContext context;
@@ -52,8 +53,12 @@ public abstract class CommandAdapter {
         return "";
     }
 
-    public boolean checkPermission(MessageReceivedEvent event) {
+    public boolean checkPermission(PermissionsUtil util) {
         return true;
+    }
+
+    public boolean checkPermission(MessageReceivedEvent event) {
+        return checkPermission(getPermissionsUtil(event));
     }
 
     public boolean isWriteableChannelRequired() {
@@ -125,7 +130,7 @@ public abstract class CommandAdapter {
         return Collections.emptyList();
     }
 
-    public boolean isStringRepresentsThisCall(String inputString) {
+    public boolean isStringRepresentsThisCall(@NotNull String inputString) {
         if (inputString.startsWith(getName())) return true;
 
         for (String alias: getAliases())
@@ -148,25 +153,6 @@ public abstract class CommandAdapter {
 
     public boolean dontCallByName() {
         return false;
-    }
-
-    @Nullable
-    public static CommandAdapter findAdapter(ZDSBot bot, GuildContext context, String comName, String content) {
-        HashMap<String, CommandAdapter> adapters = context != null ? context.getCommands() : bot.getCommandsGlobal();
-        CommandAdapter adapter = adapters.getOrDefault(comName, null);
-        if (adapter == null || adapter.dontCallByName()) {
-            final List<CommandAdapter> found = adapters.values()
-                    .stream()
-                    .filter(a -> a.isStringRepresentsThisCall(content))
-                    .toList();
-
-            if (found.size() > 1) {
-                throw new AmbiguousCallException(found);
-            } else if (found.size() == 1) {
-                adapter = found.get(0);
-            }
-        }
-        return adapter;
     }
 
     @Nullable
@@ -198,56 +184,6 @@ public abstract class CommandAdapter {
         return getConfig().getPrefix();
     }
 
-    protected final void addOK(MessageReceivedEvent event) {
-        addOK(event, true);
-    }
-
-    protected final void addOK(MessageReceivedEvent event, boolean removeOther) {
-        if (event != null) {
-            final Message message = event.getMessage();
-            if (removeOther) {
-                message.removeReaction(EMOJI_WAIT).queue();
-                message.removeReaction(EMOJI_ERROR).queue();
-            }
-            message.addReaction(EMOJI_OK).queue();
-        }
-    }
-
-    protected final void addWaiting(MessageReceivedEvent event) {
-        addWaiting(event, true);
-    }
-
-    protected final void addWaiting(MessageReceivedEvent event, boolean removeOther) {
-        if (event != null) {
-            final Message message = event.getMessage();
-            if (removeOther) {
-                message.removeReaction(EMOJI_OK).queue();
-                message.removeReaction(EMOJI_ERROR).queue();
-            }
-            message.addReaction(EMOJI_WAIT).queue();
-        }
-    }
-
-    protected final void addError(MessageReceivedEvent event) {
-        addError(event, true);
-    }
-
-    protected final void addError(MessageReceivedEvent event, boolean removeOther) {
-        if (event != null) {
-            final Message message = event.getMessage();
-            if (removeOther) {
-                message.removeReaction(EMOJI_WAIT).queue();
-                message.removeReaction(EMOJI_OK).queue();
-            }
-            message.addReaction(EMOJI_ERROR).queue();
-        }
-    }
-
-    protected final void addResult(boolean result, MessageReceivedEvent event) {
-        if (result) addOK(event);
-        else addError(event);
-    }
-
     /**
      * Call another command, like it was called from discord chat
      * @param content command string (<b>without</b> any command prefix like {@link ZDSBBasicConfig#getPrefix()})
@@ -275,16 +211,16 @@ public abstract class CommandAdapter {
     }
 
     protected final ResponseTarget getResponseTarget(MessageReceivedEvent event, Object[] params) {
-        if (event != null) return getResponseTarget(event);
+        if (event != null) return new ResponseTarget(event, getConfig());
         if (params.length >= 1) {
             if (params[0] instanceof final ResponseTarget target)
                 return target;
             if (params[0] instanceof final MessageChannel channel)
                 return ResponseTarget.channel(channel);
             if (params[0] instanceof final Message message)
-                return ResponseTarget.message(message);
+                return ResponseTarget.message(message, getConfig().doReplyToMessages());
             if (params[0] instanceof final MessageReceivedEvent e)
-                return getResponseTarget(e);
+                return new ResponseTarget(e, getConfig());
             if (params[0] instanceof final GenericEvent e) {
                 Message message = null;
                 try {
@@ -293,31 +229,17 @@ public abstract class CommandAdapter {
                         message = msg;
                 } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) { }
 
-                if (message != null && getConfig().doReplyToMessages())
-                    return ResponseTarget.message(message);
+                if (message != null)
+                    return ResponseTarget.message(message, getConfig().doReplyToMessages());
 
                 try {
                     final Object channelObj = e.getClass().getMethod("getChannel").invoke(e);
                     if (channelObj instanceof final MessageChannel channel)
                         return ResponseTarget.channel(channel);
                 } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) { }
-
-                if (message != null) return ResponseTarget.message(message);
             }
         }
         throw new IllegalStateException("Channel not provided by external call");
-    }
-
-    public final ResponseTarget getResponseTarget(MessageReceivedEvent event) {
-        return getResponseTarget(getConfig(), event);
-    }
-
-    public static ResponseTarget getResponseTarget(ZDSBBasicConfig config, MessageReceivedEvent event) {
-        if (config.doReplyToMessages()) {
-            return new ResponseTarget(event.getMessage());
-        } else {
-            return new ResponseTarget(event.getChannel());
-        }
     }
 
     public static void requireWritableChannel(ResponseTarget toCheck) {
@@ -327,8 +249,8 @@ public abstract class CommandAdapter {
         else if (!valid)
             throw new IllegalStateException("ResponseTarget must be valid for this command.");
     }
-    public static class AmbiguousCallException extends DescribedException {
 
+    public static class AmbiguousCallException extends DescribedException {
         public AmbiguousCallException(List<CommandAdapter> found) {
             super(Strings.CORE.get("err.ambiguous"), generateDescription(found));
         }
@@ -344,5 +266,48 @@ public abstract class CommandAdapter {
             }
             return desc.append("```").toString();
         }
+
+    }
+    @Nullable
+    public static CommandAdapter findAdapter(ZDSBot bot, GuildContext context, String comName, String content, boolean slash) {
+        HashMap<String, CommandAdapter> adapters = context != null ? context.getCommands() : bot.getCommandsGlobal();
+        CommandAdapter adapter = adapters.getOrDefault(comName, null);
+        if (adapter == null || adapter.dontCallByName()) {
+            final List<CommandAdapter> found = adapters.values()
+                    .stream()
+                    .filter(a -> slash == (a instanceof SlashCommandAdapter))
+                    .filter(a -> a.isStringRepresentsThisCall(content))
+                    .toList();
+
+            if (found.size() > 1) {
+                throw new AmbiguousCallException(found);
+            } else if (found.size() == 1) {
+                adapter = found.get(0);
+            }
+        }
+        return adapter;
+    }
+
+    @NotNull
+    public static CommandAdapter findAndCheckAdapter(ZDSBot bot, GuildContext context, String name, String content, boolean slash) {
+        CommandAdapter adapter = findAdapter(bot, context, name, content, slash);
+        if (adapter == null) {
+            if (context != null) {
+                if (context.isForeign() && context.isForeignBannedCommand(name))
+                    throw new ForeignServerException();
+                else if (context.isGuildBannedCommand(name) && !slash) {
+                    throw new InsufficientPermissionsException(Strings.CORE.get("err.guilds_banned"));
+                }
+            } else {
+                if (bot.isGlobalBannedCommand(name))
+                    throw new InsufficientPermissionsException(Strings.CORE.get("err.global_banned"));
+            }
+            throw new CommandNotFoundException();
+        }
+        return adapter;
+    }
+
+    public static SlashCommandAdapter findAndCheckSlashAdapter(ZDSBot bot, GuildContext context, String name, String content) {
+        return (SlashCommandAdapter) findAndCheckAdapter(bot, context, name, content, true);
     }
 }

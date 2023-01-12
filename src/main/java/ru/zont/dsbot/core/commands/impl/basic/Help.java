@@ -8,6 +8,7 @@ import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.Input;
+import ru.zont.dsbot.core.util.ResponseTarget;
 import ru.zont.dsbot.core.util.*;
 
 import java.util.*;
@@ -29,7 +30,7 @@ public class Help extends CommandAdapter {
         List<String> argList = cl.getArgList();
 
         if (argList.size() == 1) {
-            CommandAdapter adapter = findAdapter(getBot(), getContext(), argList.get(0), argList.get(0));
+            CommandAdapter adapter = findAdapter(getBot(), getContext(), argList.get(0), argList.get(0), false);
             if (adapter == null)
                 throw new DescribedException(
                         STR.get("err.unknown_command"),
@@ -41,7 +42,7 @@ public class Help extends CommandAdapter {
             LinkedList<String> badNames = new LinkedList<>();
             LinkedList<CommandAdapter> commands = new LinkedList<>();
             for (String s : argList) {
-                CommandAdapter adapter = findAdapter(getBot(), getContext(), s, s);
+                CommandAdapter adapter = findAdapter(getBot(), getContext(), s, s, false);
                 if (adapter == null)
                     badNames.add(s);
                 else commands.add(adapter);
@@ -74,8 +75,8 @@ public class Help extends CommandAdapter {
                 .setTitle(adapter.getName())
                 .setColor(HELP_COLOR);
         getBot().versionFooter(builder);
-        MessageBatch.sendNow(CommandAdapter.getResponseTarget(getConfig(), event)
-                .responseEmbed(MessageSplitter.embeds(adapter.getHelp(), builder)));
+        MessageBatch.sendNow(new ResponseTarget(event, getConfig())
+                .respondEmbeds(MessageSplitter.embeds(adapter.getHelp(), builder)));
     }
 
     private void helpAll(MessageReceivedEvent event, CommandLine cl, Collection<CommandAdapter> commands, String prefix) {
@@ -94,8 +95,8 @@ public class Help extends CommandAdapter {
                 .setTitle(STR.get("comms.help.list.title"))
                 .setColor(HELP_COLOR);
         getBot().versionFooter(builder);
-        MessageBatch.sendNow(CommandAdapter.getResponseTarget(getConfig(), event)
-                .responseEmbed(MessageSplitter.embeds(content, builder)));
+        MessageBatch.sendNow(new ResponseTarget(event, getConfig())
+                .respondEmbeds(MessageSplitter.embeds(content, builder)));
     }
 
     @Override

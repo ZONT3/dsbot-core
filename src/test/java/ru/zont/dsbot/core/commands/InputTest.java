@@ -35,14 +35,14 @@ class InputTest {
                 ```""";
         Input input = new Input("command %s".formatted(code));
         input.applyAdapter(null, mock);
-        assertEquals(code, input.getContentUnrecogrized());
+        assertEquals(code, input.getContentUnrecognized());
     }
 
     @Test
     void getUnrecognizedAsIs() {
         Input input = new Input("command -op --longop \"val ue\" -v val right over");
         input.applyAdapter(null, mock);
-        assertEquals("right over", input.getContentUnrecogrized());
+        assertEquals("right over", input.getContentUnrecognized());
     }
 
     @Test
@@ -57,13 +57,13 @@ class InputTest {
                 ```""";
         Input input = new Input("command -op --longop \"val ue\" -v val %s".formatted(code));
         input.applyAdapter(null, mock);
-        assertEquals(code, input.getContentUnrecogrized());
+        assertEquals(code, input.getContentUnrecognized());
     }
 
     @Test
     void getUnrecognizedAsIsConfuse() {
         Input input = new Input("exec python -m pip install ipython");
         input.applyAdapter(null, mock);
-        assertEquals("python -m pip install ipython", input.getContentUnrecogrized());
+        assertEquals("python -m pip install ipython", input.getContentUnrecognized());
     }
 }

@@ -148,7 +148,7 @@ public class StreamPrinter {
         } else embeds = Collections.emptyList();
 
         if (messages == null && embeds.size() > 0)
-            messages = MessageBatch.sendNow(ResponseTarget.channel(channel).responseEmbed(embeds));
+            messages = MessageBatch.sendNow(ResponseTarget.channel(channel).respondEmbeds(embeds));
         else if (messages != null) messages.updateEmbeds(embeds, channel);
         invalidated = false;
     }

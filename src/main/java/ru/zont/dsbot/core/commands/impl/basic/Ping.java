@@ -22,7 +22,7 @@ public class Ping extends CommandAdapter {
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("Pong!")
                 .build();
-        MessageAction action = getResponseTarget(event, params).responseEmbed(embed);
+        final MessageAction action = replyTo.respondEmbed(embed);
 
         long recv = System.currentTimeMillis();
         long created = event.getMessage().getTimeCreated().toInstant().toEpochMilli();

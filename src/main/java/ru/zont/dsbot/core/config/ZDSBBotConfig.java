@@ -10,11 +10,14 @@ public class ZDSBBotConfig extends ZDSBConfig {
     }
 
     public Entry botName = new Entry("Unnamed Bot");
-    public Entry operators = new Entry("331524458806247426, 1337");
-    public Entry approvedGuilds = new Entry("331526118635208716, 843501832126070792");
+    public Entry operators = new Entry("331524458806247426");
+    public Entry approvedGuilds = new Entry();
     public Entry cloneGlobalConfig = new Entry("false");
     public Entry pythonPath = new Entry("python");
     public Entry scriptsDir = new Entry("scripts");
+    public Entry allowExecution = new Entry("false");
+    public Entry mainGuild = new Entry("331526118635208716");
+    public Entry excludedCommands = new Entry();
 
     public boolean isOperator(String id) {
         return operators.getValue().contains(id);
@@ -33,6 +36,9 @@ public class ZDSBBotConfig extends ZDSBConfig {
     }
 
     public Set<String> getApprovedGuilds() {
-        return new HashSet<>(approvedGuilds.toList());
+        HashSet<String> ids = new HashSet<>(approvedGuilds.toList());
+        String mainId = mainGuild.getString();
+        if (mainId != null) ids.add(mainId);
+        return ids;
     }
 }

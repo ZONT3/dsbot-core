@@ -5,7 +5,7 @@
 - [x] Config system
 - [x] Embed splitter
 - [x] Error reporter
-- [ ] Commands
+- [x] Commands
   - [x] Input (CLI)
   - [x] Permission utils
     - [x] Foreign servers
@@ -15,17 +15,19 @@
 
 ### 2.0
 
+- [x] Slash-commands
 - [x] Services (loops in legacy)
 - [x] Watchers
-- [ ] DB utils
-- [ ] Routing for functions
-- [ ] Config command
+- [x] DB utils
+- [x] Slash-commands
+- [ ] RG Bot TODO
 
 ### 2.1
 
+- [ ] Config command
 - [ ] Parser and other utils from legacy
+- [ ] ~~Routing for functions~~
 
 ### 2.2
 
-- [ ] Slash-commands
 - [ ] Paged embed

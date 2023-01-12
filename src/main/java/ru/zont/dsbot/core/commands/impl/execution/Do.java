@@ -42,7 +42,7 @@ public class Do extends ExecBase {
         final String[] split = scriptFile.getName().split("\\.");
         final String ext = split[split.length - 1];
 
-        addWaiting(event);
+        ResponseTarget.addWaiting(event.getMessage());
         final ExecutionManager manager = getBot().getExecutionManager();
         try {
             switch (ext) {
@@ -53,14 +53,14 @@ public class Do extends ExecBase {
                     manager.newProcess(pArgs.toArray(String[]::new),
                             script,
                             replyTo.getChannel(),
-                            (i) -> addResult(i == 0, event),
+                            (i) -> ResponseTarget.addResult(i == 0, event.getMessage()),
                             verbose, true, !verbose);
                 }
                 case "cmd", "bat" -> throw new NotImplementedException("Windows CMD execution");
                 default -> throw new InvalidSyntaxException("Unknown script format", this);
             }
         } catch (Throwable t) {
-            addError(event);
+            ResponseTarget.addError(event.getMessage());
             throw t;
         }
     }
