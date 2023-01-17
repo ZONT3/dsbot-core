@@ -73,6 +73,7 @@ public class GuildContext {
         T instance = (T) map.getOrDefault(guildId, null);
         if (instance == null) {
             instance = newInstance.get();
+            if (instance == null) return null;
             map.put(guildId, instance);
         }
         return instance;
