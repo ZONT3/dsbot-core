@@ -7,7 +7,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
 import ru.zont.dsbot.core.commands.exceptions.UnknownPermissionException;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 
 import java.util.List;
 import java.util.Objects;
@@ -15,7 +15,7 @@ import java.util.Objects;
 public class PermissionsUtil {
     private final ZDSBot bot;
     private final GuildContext context;
-    private final Member member;
+    private Member member;
     private final User author;
     private final MessageChannel channel;
 
@@ -48,7 +48,8 @@ public class PermissionsUtil {
         return member.isOwner() || member.hasPermission(Permission.ADMINISTRATOR);
     }
 
-    private void checkMember() {
+    public void checkMember() {
+        if (member == null) member = getContextOrMain().getGuild().getMember(author);
         if (member == null) throw new UnknownPermissionException();
     }
 
@@ -74,7 +75,7 @@ public class PermissionsUtil {
         return false;
     }
 
-    private ZDSBBasicConfig getConfig() {
+    protected ZDSBContextConfig getConfig() {
         return context != null ? context.getConfig() : bot.getGlobalConfig();
     }
 
@@ -84,6 +85,22 @@ public class PermissionsUtil {
 
     public GuildContext getContext() {
         return context;
+    }
+
+    public GuildContext getContextOrMain() {
+        return context != null ? context : bot.getMainGuildContext();
+    }
+
+    public Member getMember() {
+        return member;
+    }
+
+    public User getAuthor() {
+        return author;
+    }
+
+    public MessageChannel getChannel() {
+        return channel;
     }
 
     public boolean permSetAdminFromMain() {

@@ -12,7 +12,7 @@ import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.commands.CommandListener;
 import ru.zont.dsbot.core.commands.SlashCommandAdapter;
 import ru.zont.dsbot.core.commands.impl.execution.ExecBase;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
 import ru.zont.dsbot.core.executil.ExecutionManager;
@@ -31,7 +31,7 @@ public class ZDSBot {
 
     private final String coreVersion;
     private final JDA jda;
-    private final ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager;
+    private final ZDSBConfigManager<? extends ZDSBContextConfig, ? extends ZDSBBotConfig> configManager;
     private final HashMap<String, GuildContext> contextStore;
     private final ArrayList<Class<? extends CommandAdapter>> commandAdapters;
     private final ArrayList<Class<? extends GuildListenerAdapter>> guildListeners;
@@ -49,7 +49,7 @@ public class ZDSBot {
     private final LinkedList<SlashCommandData> globalSlashCommands;
 
     public ZDSBot(JDABuilder jdaBuilder,
-                  ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
+                  ZDSBConfigManager<? extends ZDSBContextConfig, ? extends ZDSBBotConfig> configManager,
                   ArrayList<Class<? extends CommandAdapter>> commandAdapters,
                   ArrayList<Class<? extends GuildListenerAdapter>> guildListeners)
             throws InterruptedException, LoginException {
@@ -57,7 +57,7 @@ public class ZDSBot {
     }
 
     public ZDSBot(JDABuilder jdaBuilder,
-                  ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> configManager,
+                  ZDSBConfigManager<? extends ZDSBContextConfig, ? extends ZDSBBotConfig> configManager,
                   ArrayList<Class<? extends CommandAdapter>> commandAdapters,
                   ArrayList<Class<? extends GuildListenerAdapter>> guildListeners, String botVersion)
             throws InterruptedException, LoginException {
@@ -239,12 +239,12 @@ public class ZDSBot {
     }
 
     @SuppressWarnings("unchecked")
-    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+    public final <T extends ZDSBContextConfig> T getGlobalConfig() {
         return (T) configManager.globalConfig();
     }
 
     @SuppressWarnings("unchecked")
-    public final <T extends ZDSBBasicConfig> T getGuildConfig(String guildId) {
+    public final <T extends ZDSBContextConfig> T getGuildConfig(String guildId) {
         return (T) configManager.guildConfig(guildId);
     }
 

@@ -15,7 +15,7 @@ import ru.zont.dsbot.core.commands.exceptions.BotWritePermissionException;
 import ru.zont.dsbot.core.commands.exceptions.CommandNotFoundException;
 import ru.zont.dsbot.core.commands.exceptions.ForeignServerException;
 import ru.zont.dsbot.core.commands.exceptions.InsufficientPermissionsException;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.util.DescribedException;
 import ru.zont.dsbot.core.util.ResponseTarget;
@@ -164,11 +164,11 @@ public abstract class CommandAdapter {
         return bot;
     }
 
-    public final <T extends ZDSBBasicConfig> T getConfig() {
+    public final <T extends ZDSBContextConfig> T getConfig() {
         return getContext() != null ? getContext().getConfig() : getGlobalConfig();
     }
 
-    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+    public final <T extends ZDSBContextConfig> T getGlobalConfig() {
         return getBot().getGlobalConfig();
     }
 
@@ -186,7 +186,7 @@ public abstract class CommandAdapter {
 
     /**
      * Call another command, like it was called from discord chat
-     * @param content command string (<b>without</b> any command prefix like {@link ZDSBBasicConfig#getPrefix()})
+     * @param content command string (<b>without</b> any command prefix like {@link ZDSBContextConfig#getPrefix()})
      * @param params any params that will be passed in {@link CommandAdapter#onCall(ResponseTarget, Input, MessageReceivedEvent, Object...)} vararg.
      *               First vararg preferred to be an object that represents {@link ResponseTarget}. If so, first argument
      *               in {@code onCall} method will not be {@code null}. Valid objects are:

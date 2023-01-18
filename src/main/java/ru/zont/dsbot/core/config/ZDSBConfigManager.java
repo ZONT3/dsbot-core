@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.function.Function;
 
-public class ZDSBConfigManager<A extends ZDSBBasicConfig, B extends ZDSBBotConfig> {
+public class ZDSBConfigManager<A extends ZDSBContextConfig, B extends ZDSBBotConfig> {
     private final File dir;
     private final Class<A> instClass;
     private final Class<B> botConfigClass;
@@ -14,7 +14,7 @@ public class ZDSBConfigManager<A extends ZDSBBasicConfig, B extends ZDSBBotConfi
 
     @SuppressWarnings("unchecked")
     public ZDSBConfigManager(String path) {
-        this(path, (Class<A>) ZDSBBasicConfig.class);
+        this(path, (Class<A>) ZDSBContextConfig.class);
     }
 
     @SuppressWarnings("unchecked")

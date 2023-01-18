@@ -7,8 +7,7 @@ import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.commands.SlashCommandAdapter;
-import ru.zont.dsbot.core.commands.impl.execution.ExecBase;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 import ru.zont.dsbot.core.commands.CommandAdapter;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.listeners.GuildListenerAdapter;
@@ -182,11 +181,11 @@ public class GuildContext {
         return bot.getJda().getGuildById(getGuildId());
     }
 
-    public final <T extends ZDSBBasicConfig> T getConfig() {
+    public final <T extends ZDSBContextConfig> T getConfig() {
         return bot.getGuildConfig(getGuildId());
     }
 
-    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+    public final <T extends ZDSBContextConfig> T getGlobalConfig() {
         return bot.getGlobalConfig();
     }
 

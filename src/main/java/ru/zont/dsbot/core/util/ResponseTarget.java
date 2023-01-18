@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import org.jetbrains.annotations.NotNull;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -69,7 +69,7 @@ public class ResponseTarget {
         this.slashEvent = null;
     }
 
-    public ResponseTarget(MessageReceivedEvent event, ZDSBBasicConfig config) {
+    public ResponseTarget(MessageReceivedEvent event, ZDSBContextConfig config) {
         this(event.getMessage(), config.doReplyToMessages());
     }
 

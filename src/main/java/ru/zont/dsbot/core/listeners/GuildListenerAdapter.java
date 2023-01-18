@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.ErrorReporter;
 import ru.zont.dsbot.core.GuildContext;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 
 import java.lang.reflect.InvocationTargetException;
@@ -111,11 +111,11 @@ public abstract class GuildListenerAdapter implements EventListener {
         return getBot().getErrorReporter();
     }
 
-    public final <T extends ZDSBBasicConfig> T getConfig() {
+    public final <T extends ZDSBContextConfig> T getConfig() {
         return getContext() != null ? getContext().getConfig() : getGlobalConfig();
     }
 
-    public final <T extends ZDSBBasicConfig> T getGlobalConfig() {
+    public final <T extends ZDSBContextConfig> T getGlobalConfig() {
         return getBot().getGlobalConfig();
     }
 

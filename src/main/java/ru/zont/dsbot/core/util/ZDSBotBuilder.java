@@ -7,7 +7,7 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.zont.dsbot.core.ZDSBot;
-import ru.zont.dsbot.core.config.ZDSBBasicConfig;
+import ru.zont.dsbot.core.config.ZDSBContextConfig;
 import ru.zont.dsbot.core.config.ZDSBBotConfig;
 import ru.zont.dsbot.core.config.ZDSBConfigManager;
 import ru.zont.dsbot.core.commands.CommandAdapter;
@@ -26,7 +26,7 @@ public class ZDSBotBuilder {
     private static final Logger log = LoggerFactory.getLogger(ZDSBotBuilder.class);
 
     private final JDABuilder jdaBuilder;
-    private ZDSBConfigManager<? extends ZDSBBasicConfig, ? extends ZDSBBotConfig> config;
+    private ZDSBConfigManager<? extends ZDSBContextConfig, ? extends ZDSBBotConfig> config;
     private final ArrayList<Class<? extends CommandAdapter>> commandAdapters = new ArrayList<>();
     private final ArrayList<Class<? extends GuildListenerAdapter>> guildListeners = new ArrayList<>();
     private String version = null;
@@ -108,7 +108,7 @@ public class ZDSBotBuilder {
         return this;
     }
 
-    public <T extends ZDSBBasicConfig> ZDSBotBuilder defaultConfig(Class<T> configClass) {
+    public <T extends ZDSBContextConfig> ZDSBotBuilder defaultConfig(Class<T> configClass) {
         config = new ZDSBConfigManager<>("cfg", configClass);
         return this;
     }
@@ -129,8 +129,8 @@ public class ZDSBotBuilder {
         return this;
     }
 
-    public <A extends ZDSBBasicConfig, B extends ZDSBBotConfig> ZDSBotBuilder config(Class<A> configClass,
-                                                                                     Class<B> botConfigClass) {
+    public <A extends ZDSBContextConfig, B extends ZDSBBotConfig> ZDSBotBuilder config(Class<A> configClass,
+                                                                                       Class<B> botConfigClass) {
         config = new ZDSBConfigManager<>("cfg", configClass, botConfigClass);
         return this;
     }

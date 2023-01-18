@@ -18,7 +18,7 @@ class ZDSBConfigManagerTest extends StandardTest {
     private static final String defaultValue = "default-value";
     private ZDSBConfigManager<TestConfig, ZDSBBotConfig> manager;
 
-    private static class TestConfig extends ZDSBBasicConfig {
+    private static class TestConfig extends ZDSBContextConfig {
         protected TestConfig(String configName, File dir, ZDSBConfig inherit) {
             super(configName, dir, inherit);
             prefix = new Entry(defaultValue);

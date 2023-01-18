@@ -116,6 +116,15 @@ public class LiteJSON {
                 : Collections.emptyList();
     }
 
+    public void addIfNotContains(String element) {
+        if (element.isBlank()) return;
+        opList(a -> {
+            if (StreamSupport.stream(a.spliterator(), false)
+                    .map(e -> e.isJsonPrimitive() ? e.getAsString() : "")
+                    .noneMatch(element::equals)) a.add(element);
+        });
+    }
+
     private String getFileName() {
         return "data/%s.json".formatted(name);
     }

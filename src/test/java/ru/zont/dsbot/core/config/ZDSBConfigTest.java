@@ -14,7 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ZDSBConfigTest extends StandardTest {
-    private static class TestConfig extends ZDSBBasicConfig {
+    private static class TestConfig extends ZDSBContextConfig {
         protected TestConfig(String configName, File dir, ZDSBConfig inherit) {
             super(configName, dir, inherit);
             prefix = new Entry(defaultValue);
