@@ -149,8 +149,7 @@ public class GuildContext {
     }
 
     public String getGuildNameNormalized() {
-        final Transliterator t = Transliterator.getInstance("Any-Latin; NFD; Latin-ASCII");
-        return t.transliterate(getGuildName());
+        return bot.transliterate(getGuildName());
     }
 
     public ErrorReporter getErrorReporter() {

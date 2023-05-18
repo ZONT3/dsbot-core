@@ -55,7 +55,7 @@ public abstract class DisplayedWatcherAdapter extends WatcherAdapter {
         updateChannel();
 
         if (channel != null) {
-            if (needInit)
+            if (needInit || messages == null)
                 initMessages();
             else
                 messages.updateEmbeds(getMessages(), getChannel());

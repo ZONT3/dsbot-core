@@ -1,5 +1,6 @@
 package ru.zont.dsbot.core;
 
+import com.ibm.icu.text.Transliterator;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -28,6 +29,8 @@ import java.util.*;
 
 public class ZDSBot {
     private static final Logger log = LoggerFactory.getLogger(ZDSBot.class);
+    public static final Transliterator ANY_TRANSLITERATOR = Transliterator.getInstance("Any-Latin; NFD; Latin-ASCII");
+    private static Transliterator cyrillicTransliterator;
 
     private final String coreVersion;
     private final JDA jda;
@@ -343,5 +346,26 @@ public class ZDSBot {
 
     public DBConnectionHandler getDbConnectionHandler() {
         return dbConnectionHandler;
+    }
+
+    public Transliterator getCyrillicTransliterator() {
+        if (cyrillicTransliterator != null)
+            return cyrillicTransliterator;
+        cyrillicTransliterator = Transliterator.createFromRules("Cyrillic-Latin", ":: Cyrillic-Latin/UNGEGN", Transliterator.FORWARD);
+        return cyrillicTransliterator;
+    }
+
+    public String transliterate(String input) {
+        boolean containsCyrillic = input.matches(".*[А-Яа-я].*");
+        boolean containsNonLatin = input.matches(".*[^\\p{ASCII}].*");
+        double nonLatinCharsRatio = ((double) input.replaceAll("\\p{ASCII}", "").length()) / input.length();
+
+        if (!containsNonLatin) {
+            return input;
+        } else if (containsCyrillic && nonLatinCharsRatio < 0.2) {
+            return getCyrillicTransliterator().transliterate(input);
+        } else {
+            return ANY_TRANSLITERATOR.transliterate(input);
+        }
     }
 }
