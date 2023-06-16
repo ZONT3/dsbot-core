@@ -285,6 +285,14 @@ public class ZDSBConfig {
             return res;
         }
 
+        @Nonnull
+        public String getString(String fallback) {
+            String res = getValue();
+            if (res.isBlank())
+                return fallback;
+            return res;
+        }
+
         public String getDefaultValue() {
             return defaultValue;
         }
